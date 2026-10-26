@@ -11,8 +11,8 @@ Items marked **(proposed)** go beyond the settled decisions and need sign-off in
   - `crypto_box_keypair`, `crypto_box_seed_keypair`, `crypto_box_seal`, `crypto_box_seal_open`
   - `crypto_secretbox_easy`, `crypto_secretbox_open_easy`
   - `crypto_pwhash` (Argon2id13)
-  - `crypto_generichash`, `crypto_kdf_derive_from_key` **(proposed)**: needed to split one secret into independent keys (sections 2 and 3)
-  - `crypto_secretstream_xchacha20poly1305_*` **(proposed)**: for files (section 6)
+  - `crypto_generichash`, `crypto_kdf_derive_from_key`: needed to split one secret into independent keys (sections 2 and 3)
+  - `crypto_secretstream_xchacha20poly1305_*`: for files (section 6)
   - `randombytes_buf`, `memzero`
 - No hand-built constructions: no custom modes, no manual nonce counters, no raw ChaCha or HMAC.
 - Every key derivation uses its own `crypto_kdf` context (8 bytes) so keys from different purposes can never collide: `WDcase01`, `WDpass01`, `WDrcvr01`.
