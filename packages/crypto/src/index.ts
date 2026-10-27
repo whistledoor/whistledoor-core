@@ -28,3 +28,7 @@ export {
   wrapHandlerSecretKey,
 } from './keys.js';
 export type { KeyPair } from './keys.js';
+export { decryptMessage, encryptMessage, openEnvelope, sealEnvelope, sealReport } from './report.js';
+export type { SealedReport } from './report.js';
+export { MAX_FILE_BYTES, decryptFile, encryptFile, paddedLength } from './files.js';
+export type { EncryptedFile } from './files.js';
