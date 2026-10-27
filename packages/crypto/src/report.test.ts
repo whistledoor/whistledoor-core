@@ -11,7 +11,7 @@ const TENANT = {
   secretKey: '3c4951628c9051c63f01644cf9caa6bbd694dfd8b17dcd85c08c6601d9e6e033',
   publicKey: '768a418dd6fffb61e9fb9f8e4ed56f6d903ae4febcc9eeaec45653bc31aff376',
 };
-const CASE_CODE = '0410-6105-0R3G-G28A-1C6D';
+const CASE_CODE = '0410-6105-0R3G-G28A-1C6DW';
 
 function fromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/../g) ?? [], (pair) => parseInt(pair, 16));

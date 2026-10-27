@@ -1,7 +1,7 @@
 // Crockford Base32 for codes people read and type (crypto-design.md section 2):
 // case codes, recovery keys and fingerprints.
 
-const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export const CROCKFORD_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const GROUP_SIZE = 4;
 
 export type CrockfordErrorReason = 'length' | 'character';
@@ -26,7 +26,7 @@ export function encodeCrockford(bytes: Uint8Array, chars: number): string {
     bits += 8;
     while (bits >= 5 && out.length < chars) {
       bits -= 5;
-      out += ALPHABET[(buffer >> bits) & 31];
+      out += CROCKFORD_ALPHABET[(buffer >> bits) & 31];
     }
     buffer &= (1 << bits) - 1;
   }
@@ -43,11 +43,7 @@ export function encodeCrockford(bytes: Uint8Array, chars: number): string {
  * Unused low bits of the last byte are zero.
  */
 export function decodeCrockford(input: string, chars: number, byteLength: number): Uint8Array {
-  const normalized = input
-    .toUpperCase()
-    .replace(/[\s-]/g, '')
-    .replace(/[IL]/g, '1')
-    .replace(/O/g, '0');
+  const normalized = normalizeCrockford(input);
   if (normalized.length !== chars) {
     throw new CrockfordError('length', `Expected ${chars} characters, got ${normalized.length}`);
   }
@@ -56,7 +52,7 @@ export function decodeCrockford(input: string, chars: number, byteLength: number
   let bits = 0;
   let index = 0;
   for (const char of normalized) {
-    const value = ALPHABET.indexOf(char);
+    const value = CROCKFORD_ALPHABET.indexOf(char);
     if (value < 0) {
       throw new CrockfordError('character', `Invalid character "${char}"`);
     }
@@ -72,4 +68,13 @@ export function decodeCrockford(input: string, chars: number, byteLength: number
     out[index] = buffer << (8 - bits);
   }
   return out;
+}
+
+/** Uppercases, drops whitespace and dashes, reads `I`/`L` as `1` and `O` as `0`. */
+export function normalizeCrockford(input: string): string {
+  return input
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/[IL]/g, '1')
+    .replace(/O/g, '0');
 }
