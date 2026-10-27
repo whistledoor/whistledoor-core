@@ -21,9 +21,9 @@ Items marked **(proposed)** go beyond the settled decisions and need sign-off in
 
 ## 2. Case code
 
-Decided: 100 random bits, 20 Base32 characters in 5 groups, shown once, last group confirmed, copy / .txt / print, error-tolerant input. The server never receives the code.
+Decided: 100 random bits, 20 Base32 characters plus a check character in 5 groups, shown once, last group confirmed, copy / .txt / print, error-tolerant input. The server never receives the code.
 
-- **Alphabet:** Crockford Base32 (`0-9 A-Z` without `I L O U`). **(proposed)** On input: uppercase, drop spaces and dashes, read `I`/`L` as `1` and `O` as `0`. Display: `XXXX-XXXX-XXXX-XXXX-XXXX`.
+- **Alphabet:** Crockford Base32 (`0-9 A-Z` without `I L O U`). **(proposed)** On input: uppercase, drop spaces and dashes, read `I`/`L` as `1` and `O` as `0`. Display: `XXXX-XXXX-XXXX-XXXX-XXXXC` (check character below).
 - **Generate:** `randombytes_buf(13)`, clear the last 4 bits, encode the first 100 bits as 20 characters.
 - **Derive:**
   ```
@@ -34,7 +34,7 @@ Decided: 100 random bits, 20 Base32 characters in 5 groups, shown once, last gro
 - `lookupId` goes to the server and identifies the case. The server stores only `crypto_generichash(lookupId)`, so a database leak does not let anyone log in as the reporter. **(proposed)**
 - `caseKey` never leaves the reporter's browser except sealed to the tenant (section 5).
 - 100 bits makes guessing a `lookupId` or `caseKey` impractical, so no slow hash is needed here. The API still rate-limits lookups.
-- **Check character (proposed 2026-10-27).** A 21st character catches typos in the browser, before any lookup request. Without it, a typo looks exactly like "no such case": the reporter may think the report was deleted, and every typo counts against the lookup rate limit.
+- **Check character.** Decided 2026-10-27. A 21st character catches typos in the browser, before any lookup request. Without it, a typo looks exactly like "no such case": the reporter may think the report was deleted, and every typo counts against the lookup rate limit.
   - Crockford's own check symbol (mod 37) is not used: it adds `* ~ $ = U`, which are awkward on phone keyboards and on paper, and 5 in 37 codes would need one.
   - Instead, with the 20 code characters as values `c_1 … c_20` (0–31) and arithmetic in GF(2^5) with polynomial `x^5 + x^2 + 1`:
     ```
@@ -57,7 +57,7 @@ kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
 - `password` is normalized to Unicode NFC, then UTF-8 encoded. The same password with umlauts can otherwise arrive as NFC or NFD depending on OS, keyboard or copy-paste, and the handler would be locked out. No other changes: no trimming, no case folding. **(proposed)**
 - `salt`: 16 random bytes per handler, stored on the server next to `opslimit` and `memlimit`, fetched by email before login. For unknown emails the server returns a deterministic fake salt (keyed hash of the email) so the endpoint does not reveal who has an account. **(proposed)**
 - `authKey` is sent hex-encoded as the better-auth "password"; better-auth hashes it again. A server that only stores that hash cannot recover `kek`.
-- **Parameters (proposed final 2026-10-27):** `opslimit = 3`, `memlimit = 64 MiB`, close to Bitwarden's Argon2id default. Stored per handler, so they can be raised later by re-deriving at the next login.
+- **Parameters.** Decided 2026-10-27: `opslimit = 3`, `memlimit = 64 MiB`, close to Bitwarden's Argon2id default. Stored per handler, so they can be raised later by re-deriving at the next login.
   - Measured with `libsodium-wrappers-sumo` 0.8.4 (WebAssembly, one lane), median of 3:
 
     | Where | 2 / 19 MiB (floor) | 3 / 32 MiB | 2 / 64 MiB | 3 / 64 MiB |
@@ -98,7 +98,7 @@ grant(handler) = 0x01 || crypto_box_seal(tenantSk, handlerPk)
 ```
 fingerprint(pk) = crypto_generichash(13, pk) with the last 4 bits cleared   // 100 bits
 ```
-shown in the case-code format (section 2): 20 Crockford characters, `XXXX-XXXX-XXXX-XXXX-XXXX`. 100 bits make finding another key with the same fingerprint impractical.
+shown like a case code (section 2) but without the check character: 20 Crockford characters, `XXXX-XXXX-XXXX-XXXX-XXXX`. It is compared, not typed in full. 100 bits make finding another key with the same fingerprint impractical.
 - **Grant:** the new handler's app shows their own fingerprint. They read it to the granting handler in person or by phone; the granting handler types the last group, as when confirming a case code. Only on a match is the grant uploaded. This step cannot be skipped.
 - **Recovery key:** no check needed; `recoveryPk` is derived in the same browser that holds the key.
 - **Reporters:** the QR poster links to `https://<tenant>.melden.whistledoor.at/#fp=<20 characters>`. Browsers never send the fragment to the server. The reporter app compares it with the fetched `tenantPk` and refuses to submit on a mismatch. This turns key substitution into code substitution, which the published bundle hash makes detectable (threat model D9). Reporters who type the address by hand get no check.
@@ -187,4 +187,4 @@ Nothing in this table lets the server read content without a handler password, a
 
 ## Open items
 
-None. Section 2 (check character) and section 3 (final Argon2id parameters) carry proposals from 2026-10-27; section 3 still needs one measurement on a real low-end phone before 1.0.
+None. Section 3 still needs one measurement on a real low-end phone before 1.0.

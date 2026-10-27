@@ -6,7 +6,7 @@ It implements [`docs/crypto-design.md`](https://github.com/whistledoor/whistledo
 
 | Module | Design doc | Functions |
 | --- | --- | --- |
-| Case code | §2 | `generateCaseCode`, `formatCaseCode`, `parseCaseCode`, `deriveCaseKeys` |
+| Case code | §2 | `generateCaseCode`, `formatCaseCode`, `parseCaseCode` (with check character), `deriveCaseKeys` |
 | Handler password | §3 | `generatePasswordSalt`, `derivePasswordKeys`, `encodeAuthKey` |
 | Keys and grants | §4 | `generateKeyPair`, `wrapHandlerSecretKey`, `unwrapHandlerSecretKey`, `grantTenantKey`, `openTenantGrant`, `regrantTenantKey` |
 | Recovery key | §4 | `generateRecoveryKey`, `formatRecoveryKey`, `parseRecoveryKey`, `deriveRecoveryKeyPair` |

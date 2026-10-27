@@ -15,7 +15,7 @@ Only the reporter and the tenant's case handlers should ever see 1. Nobody but t
 
 - **D1 Strict zero-knowledge.** The server only stores ciphertext. It never receives plaintext, case codes, passwords or private keys. No server-side virus scan, search or AI over content; no content in emails. Support sees metadata only.
 - **D2 libsodium high-level calls only.** `crypto_box_seal` to encrypt for a public key, `crypto_secretbox` for symmetric encryption, `crypto_pwhash` (Argon2id) for passwords. No hand-built constructions.
-- **D3 Case code.** 100 random bits, Base32, 20 characters in 5 groups. Generated in the reporter's browser, shown once, never sent to the server.
+- **D3 Case code.** 100 random bits, Base32, 20 characters plus a check character in 5 groups. Generated in the reporter's browser, shown once, never sent to the server.
 - **D4 Per-handler keys.** Each handler has their own key pair. The tenant key is wrapped separately for each handler, so only accounts that hold a wrapped copy can decrypt. When a handler is removed, the tenant key is rotated (offered by default, mandatory on conflict; `docs/crypto-design.md` section 4). That protects later reports; what the removed handler already saw cannot be taken back.
 - **D5 Password split.** The handler's browser runs Argon2id on the password and derives two values: `authKey`, which goes to the server for login (and is hashed again there), and `kek`, which never leaves the browser and unwraps the handler's private key. The unlocked key lives in memory only and locks after 15 minutes idle. TOTP 2FA on top.
 - **D6 No rescue.** If every key is lost, the reports are gone. Onboarding requires at least two handlers or a confirmed recovery key, so this does not happen by accident.
