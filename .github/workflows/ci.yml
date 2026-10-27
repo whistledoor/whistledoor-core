@@ -11,6 +11,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    # A normal run takes about a minute; a hung download should fail, not block.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,7 +33,23 @@ jobs:
 
       - run: pnpm test:node
 
-      - name: Install Chromium
-        run: pnpm --filter @whistledoor/crypto exec playwright install --with-deps chromium
+      # Headless tests only need Chromium's headless shell. Its shared libraries
+      # are already on the ubuntu-24.04 image; `playwright install-deps` would
+      # only add fonts through apt, whose mirror has been slow enough to hang CI.
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter @whistledoor/crypto exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Chromium headless shell
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-headless-shell
+
+      - name: Install Chromium headless shell
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 3
+        run: pnpm --filter @whistledoor/crypto exec playwright install --only-shell chromium
 
       - run: pnpm test:browser
