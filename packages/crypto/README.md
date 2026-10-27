@@ -11,6 +11,7 @@ It implements [`docs/crypto-design.md`](https://github.com/whistledoor/whistledo
 | Keys and grants | §4 | `generateKeyPair`, `wrapHandlerSecretKey`, `unwrapHandlerSecretKey`, `grantTenantKey`, `openTenantGrant`, `regrantTenantKey` |
 | Recovery key | §4 | `generateRecoveryKey`, `formatRecoveryKey`, `parseRecoveryKey`, `deriveRecoveryKeyPair` |
 | Report and messages | §5 | `sealReport`, `sealEnvelope`, `openEnvelope`, `encryptMessage`, `decryptMessage` |
+| Message chain | §5 | `createChainLink`, `parseChainLink`, `checkChain`, `messageHash` |
 | Files | §6 | `encryptFile`, `decryptFile`, `paddedLength` |
 
 Every function has fixed test vectors, computed without libsodium by the scripts in [`vectors/`](https://github.com/whistledoor/whistledoor-core/tree/main/packages/crypto/vectors), and the tests run in Node and in Chromium.

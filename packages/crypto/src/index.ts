@@ -41,3 +41,20 @@ export {
   parseRecoveryKey,
 } from './recovery.js';
 export type { RecoveryKeyErrorReason } from './recovery.js';
+export {
+  ChainLinkError,
+  MESSAGE_HASH_BYTES,
+  checkChain,
+  createChainLink,
+  messageHash,
+  parseChainLink,
+} from './chain.js';
+export type {
+  ChainCheck,
+  ChainIssue,
+  ChainIssueKind,
+  ChainLink,
+  ChainLinkErrorReason,
+  ChainedMessage,
+  MessageRole,
+} from './chain.js';

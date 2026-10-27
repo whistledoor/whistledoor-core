@@ -120,6 +120,8 @@ and sends `lookupId`, `envelope` and `report`.
   role  = "reporter" | "handler"
   ```
   The server cannot change these fields. Clients check the chain and warn about gaps, reordering or inserted messages. `role` inside the encryption stops the server from relabeling who wrote a message.
+  - `prev` is written in the JSON as base64url without padding (43 characters). `seq` is a non-negative integer.
+  - The client warns when the first message is not `seq` 0, a later message claims `seq` 0, `prev` matches no message of the case, `seq` is not the `seq` of `prev` plus one, or the same stored ciphertext appears twice. It shows the messages ordered by `seq`, not in the order the server returns them.
   - Two messages written at the same time share the same `prev`. Both are shown, ordered by `seq` and time, without a warning. The next message chains to the newest one its writer saw.
   - Not detected: removal of the newest messages (no client keeps state between visits), and removal of one branch of such a fork.
   - Not proven: which person wrote a message. Everyone holding `caseKey` (the reporter and every handler) can write as any role. The API still records the authenticated handler. Signatures (`crypto_sign`) would add only that, so they are not used and not on the list in section 1.
