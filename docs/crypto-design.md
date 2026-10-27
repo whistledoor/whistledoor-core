@@ -106,7 +106,7 @@ Decided: the report is sealed to the tenant, plus a reporter copy under the case
 
 On submit, the reporter's browser does:
 ```
-envelope = 0x01 || crypto_box_seal({ v, caseKey }, tenantPk)
+envelope = 0x01 || crypto_box_seal(caseKey, tenantPk)   // the version byte does the job of a version field
 report   = 0x01 || nonce(24) || crypto_secretbox_easy(reportJson, nonce, caseKey)
 ```
 and sends `lookupId`, `envelope` and `report`.
@@ -131,7 +131,7 @@ Decided: files are encrypted in the browser.
 
 - Each file gets its own random 32-byte `fileKey`. The file is encrypted with `crypto_secretstream_xchacha20poly1305` in 64 KiB chunks, the last chunk tagged `FINAL`, so truncation and reordering are detected. **(proposed)**
 - File name, type, size, `fileKey` and the stream header go into the report or message JSON, so they are under `caseKey` too. The server sees only an opaque object and its size.
-- Stored file objects start with `0x01` like every other ciphertext (section 1).
+- Stored file object: `0x01 || chunk_1 || … || chunk_n`, each chunk being the `crypto_secretstream` output for up to 64 KiB of padded plaintext plus 17 bytes. An empty file is one empty `FINAL` chunk. The reader derives the chunk count from the true size and rejects anything else.
 - **Padding.** Decided 2026-10-27. Before encryption the file is padded with zero bytes to the Padmé length, which leaks only O(log log L) bits of the size at a cost of at most 12%:
   ```
   E = floor(log2(L)), S = floor(log2(E)) + 1, mask = 2^(E - S) - 1

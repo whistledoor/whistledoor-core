@@ -1,11 +1,8 @@
-import { CiphertextFormatError, DecryptionError } from './errors.js';
+import { DecryptionError } from './errors.js';
+import { KEY_BYTES, assertLength, readVersioned, versioned } from './format.js';
 import { getSodium } from './sodium.js';
 
-// crypto-design.md section 4. Stored ciphertexts start with a format version
-// byte (section 1).
-
-const FORMAT_VERSION = 0x01;
-const KEY_BYTES = 32;
+// crypto-design.md section 4.
 
 export interface KeyPair {
   publicKey: Uint8Array;
@@ -85,32 +82,5 @@ export async function regrantTenantKey(
     return await grantTenantKey(tenantSk, newHandlerPk);
   } finally {
     sodium.memzero(tenantSk);
-  }
-}
-
-function versioned(...parts: Uint8Array[]): Uint8Array {
-  const out = new Uint8Array(1 + parts.reduce((sum, part) => sum + part.length, 0));
-  out[0] = FORMAT_VERSION;
-  let offset = 1;
-  for (const part of parts) {
-    out.set(part, offset);
-    offset += part.length;
-  }
-  return out;
-}
-
-function readVersioned(data: Uint8Array, bodyBytes: number): Uint8Array {
-  if (data[0] !== FORMAT_VERSION) {
-    throw new CiphertextFormatError(`Unknown format version ${data[0]}`);
-  }
-  if (data.length !== 1 + bodyBytes) {
-    throw new CiphertextFormatError(`Expected ${1 + bodyBytes} bytes, got ${data.length}`);
-  }
-  return data.subarray(1);
-}
-
-function assertLength(name: string, bytes: Uint8Array, length: number): void {
-  if (bytes.length !== length) {
-    throw new RangeError(`Expected ${name} to be ${length} bytes, got ${bytes.length}`);
   }
 }
