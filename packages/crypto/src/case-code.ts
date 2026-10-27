@@ -1,3 +1,4 @@
+import { CrockfordError, decodeCrockford, encodeCrockford } from './crockford.js';
 import { getSodium } from './sodium.js';
 
 // crypto-design.md section 2.
@@ -6,8 +7,6 @@ import { getSodium } from './sodium.js';
 export const CASE_CODE_BYTES = 13;
 
 const CASE_CODE_CHARS = 20;
-const GROUP_SIZE = 4;
-const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const KDF_CONTEXT = 'WDcase01';
 const KDF_ID_LOOKUP = 1;
 const KDF_ID_CASE_KEY = 2;
@@ -50,23 +49,7 @@ export async function generateCaseCode(random?: Uint8Array): Promise<Uint8Array>
 /** Renders a case code as `XXXX-XXXX-XXXX-XXXX-XXXX`. */
 export function formatCaseCode(code: Uint8Array): string {
   assertCaseCodeBytes(code);
-  let chars = '';
-  let buffer = 0;
-  let bits = 0;
-  for (const byte of code) {
-    buffer = (buffer << 8) | byte;
-    bits += 8;
-    while (bits >= 5 && chars.length < CASE_CODE_CHARS) {
-      bits -= 5;
-      chars += CROCKFORD[(buffer >> bits) & 31];
-    }
-    buffer &= (1 << bits) - 1;
-  }
-  const groups: string[] = [];
-  for (let i = 0; i < CASE_CODE_CHARS; i += GROUP_SIZE) {
-    groups.push(chars.slice(i, i + GROUP_SIZE));
-  }
-  return groups.join('-');
+  return encodeCrockford(code, CASE_CODE_CHARS);
 }
 
 /**
@@ -74,34 +57,14 @@ export function formatCaseCode(code: Uint8Array): string {
  * and reads `I`/`L` as `1` and `O` as `0`.
  */
 export function parseCaseCode(input: string): Uint8Array {
-  const chars = input
-    .toUpperCase()
-    .replace(/[\s-]/g, '')
-    .replace(/[IL]/g, '1')
-    .replace(/O/g, '0');
-  if (chars.length !== CASE_CODE_CHARS) {
-    throw new CaseCodeError('length', `Expected ${CASE_CODE_CHARS} characters, got ${chars.length}`);
-  }
-  const code = new Uint8Array(CASE_CODE_BYTES);
-  let buffer = 0;
-  let bits = 0;
-  let index = 0;
-  for (const char of chars) {
-    const value = CROCKFORD.indexOf(char);
-    if (value < 0) {
-      throw new CaseCodeError('character', `Invalid character "${char}"`);
+  try {
+    return decodeCrockford(input, CASE_CODE_CHARS, CASE_CODE_BYTES);
+  } catch (error) {
+    if (error instanceof CrockfordError) {
+      throw new CaseCodeError(error.reason, error.message);
     }
-    buffer = (buffer << 5) | value;
-    bits += 5;
-    if (bits >= 8) {
-      bits -= 8;
-      code[index++] = (buffer >> bits) & 0xff;
-      buffer &= (1 << bits) - 1;
-    }
+    throw error;
   }
-  // 100 bits leave 4 in the buffer; they fill the high half of the last byte.
-  code[index] = buffer << 4;
-  return code;
 }
 
 /** Derives the lookup ID and case key from a case code. */

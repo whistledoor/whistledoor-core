@@ -32,3 +32,12 @@ export { decryptMessage, encryptMessage, openEnvelope, sealEnvelope, sealReport 
 export type { SealedReport } from './report.js';
 export { MAX_FILE_BYTES, decryptFile, encryptFile, paddedLength } from './files.js';
 export type { EncryptedFile } from './files.js';
+export {
+  RECOVERY_KEY_BYTES,
+  RecoveryKeyError,
+  deriveRecoveryKeyPair,
+  formatRecoveryKey,
+  generateRecoveryKey,
+  parseRecoveryKey,
+} from './recovery.js';
+export type { RecoveryKeyErrorReason } from './recovery.js';
