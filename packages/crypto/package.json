@@ -1,6 +1,6 @@
 {
   "name": "@whistledoor/crypto",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Whistledoor's end-to-end encryption: case codes, handler and tenant keys, sealed reports and files, built on libsodium.",
   "license": "Apache-2.0",
   "repository": {
