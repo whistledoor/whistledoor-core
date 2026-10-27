@@ -1,9 +1,17 @@
 {
   "name": "@whistledoor/crypto",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Whistledoor's end-to-end encryption: case codes, handler and tenant keys, sealed reports and files, built on libsodium.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whistledoor/whistledoor-core.git",
+    "directory": "packages/crypto"
+  },
+  "homepage": "https://github.com/whistledoor/whistledoor-core/tree/main/packages/crypto#readme",
+  "bugs": "https://github.com/whistledoor/whistledoor-core/issues",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,8 +19,17 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
   ],
+  "engines": {
+    "node": ">=22.15"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
