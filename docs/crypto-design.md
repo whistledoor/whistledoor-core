@@ -41,14 +41,18 @@ Decided: 100 random bits, 20 Base32 characters in 5 groups, shown once, last gro
 Decided: browser Argon2id, split into `authKey` (to better-auth, hashed again there) and `kek` (never leaves the browser). TOTP 2FA on top.
 
 ```
-master  = crypto_pwhash(32, password, salt, opslimit, memlimit, ARGON2ID13)
+master  = crypto_pwhash(32, utf8(nfc(password)), salt, opslimit, memlimit, ARGON2ID13)
 authKey = crypto_kdf_derive_from_key(32, 1, "WDpass01", master)
 kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
 ```
 
+- `password` is normalized to Unicode NFC, then UTF-8 encoded. The same password with umlauts can otherwise arrive as NFC or NFD depending on OS, keyboard or copy-paste, and the handler would be locked out. No other changes: no trimming, no case folding. **(proposed)**
 - `salt`: 16 random bytes per handler, stored on the server next to `opslimit` and `memlimit`, fetched by email before login. For unknown emails the server returns a deterministic fake salt (keyed hash of the email) so the endpoint does not reveal who has an account. **(proposed)**
 - `authKey` is sent hex-encoded as the better-auth "password"; better-auth hashes it again. A server that only stores that hash cannot recover `kek`.
 - **Parameters (proposed):** `opslimit = 3`, `memlimit = 64 MiB`. This is close to Bitwarden's Argon2id default and runs in about a second on a recent laptop. Stored per handler, so they can be raised later by re-deriving at the next login.
+- **Client minimum (proposed):** `opslimit >= 2`, `memlimit >= 19 MiB` (19,922,944 bytes), OWASP's minimum Argon2id configuration. Parameters come from the server, so a compromised server (threat model, actor 2) could serve cheap ones, receive an `authKey` from a weak hash, and guess the password offline far faster, which also yields `kek`. The browser therefore refuses to derive with parameters below this floor and stops the login without sending anything. The floor is a constant in `packages/crypto`, never fetched from the server.
+  - The fake-salt response for unknown emails returns the current defaults, so it never trips the floor.
+  - The final defaults (open item 6) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
 - `master` is wiped with `memzero` right after the two subkeys are derived.
 - Changing the password: derive new `authKey` and `kek`, re-wrap the handler's private key, update both on the server in one request. The key pair stays the same.
 
@@ -134,4 +138,4 @@ Nothing in this table lets the server read content without a handler password, a
 3. Key substitution: fingerprints for grants and for `tenantPk`.
 4. Message signing and detecting deleted or reordered messages.
 5. File size padding, size limit, metadata stripping.
-6. Final Argon2id parameters after measuring on low-end devices.
+6. Final Argon2id parameters after measuring on low-end devices; they must stay at or above the client minimum in section 3.
