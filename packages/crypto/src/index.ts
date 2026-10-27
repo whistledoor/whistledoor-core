@@ -8,3 +8,11 @@ export {
   parseCaseCode,
 } from './case-code.js';
 export type { CaseCodeErrorReason, CaseKeys } from './case-code.js';
+export {
+  DEFAULT_PASSWORD_HASH_PARAMS,
+  PASSWORD_SALT_BYTES,
+  derivePasswordKeys,
+  encodeAuthKey,
+  generatePasswordSalt,
+} from './password.js';
+export type { PasswordHashParams, PasswordKeys } from './password.js';
