@@ -16,7 +16,7 @@ Items marked **(proposed)** go beyond the settled decisions and need sign-off in
   - `randombytes_buf`, `memzero`
 - No hand-built constructions: no custom modes, no manual nonce counters, no raw ChaCha or HMAC.
 - Every key derivation uses its own `crypto_kdf` context (8 bytes) so keys from different purposes can never collide: `WDcase01`, `WDpass01`, `WDrcvr01`.
-- Every stored ciphertext starts with a 1-byte format version (`0x01`), so formats and parameters can change later without guessing. **(proposed)**
+- Every stored ciphertext starts with a 1-byte format version (`0x01`), so formats and parameters can change later without guessing. Formats below show it as `0x01 ||`. A reader rejects any other version.
 - Every function has fixed test vectors that run in Node and the browser. Randomness is passed in as a parameter in tests, never mocked globally.
 
 ## 2. Case code
@@ -63,16 +63,16 @@ Decided: one X25519 key pair per handler; the tenant key is wrapped once per han
 **Handler key pair.** Created in the browser at signup with `crypto_box_keypair`. The server stores:
 ```
 handlerPk
-wrappedHandlerSk = nonce(24) || crypto_secretbox_easy(handlerSk, nonce, kek)
+wrappedHandlerSk = 0x01 || nonce(24) || crypto_secretbox_easy(handlerSk, nonce, kek)
 ```
 One handler key pair serves every tenant the handler belongs to, which keeps the later ombudsperson mode possible.
 
 **Tenant key pair.** Created by the first handler's browser at onboarding with `crypto_box_keypair`. `tenantPk` is public and is what reporters encrypt to. `tenantSk` is stored only wrapped:
 ```
-grant(handler) = crypto_box_seal(tenantSk, handlerPk)
+grant(handler) = 0x01 || crypto_box_seal(tenantSk, handlerPk)
 ```
 - **Unlock:** password → `kek` → open `wrappedHandlerSk` → `handlerSk` → `crypto_box_seal_open(grant)` → `tenantSk`.
-- **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first).
+- **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `0x01 || crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first).
 - **Remove:** delete that handler's grant. **Open:** rotating the tenant key afterwards, since a removed handler may have kept `tenantSk`. Rotation means a new tenant key pair and re-sealing every case's envelope (section 5), not re-encrypting content.
 - **Open, key substitution:** a compromised server could hand an unlocked handler its own public key instead of the new handler's, and receive `tenantSk`. Likewise it could serve reporters a fake `tenantPk`. Candidate fix: show a short fingerprint (`crypto_generichash` of the public key, grouped) on both screens during a grant, and print the tenant fingerprint on the QR poster. This is the same class of risk as serving modified code in the threat model.
 
@@ -81,7 +81,7 @@ grant(handler) = crypto_box_seal(tenantSk, handlerPk)
 recoveryKey = randombytes_buf(20)                       // 160 bits, 32 Crockford chars, 8 groups
 seed        = crypto_kdf_derive_from_key(32, 1, "WDrcvr01", crypto_generichash(32, recoveryKey))
 (recoveryPk, recoverySk) = crypto_box_seed_keypair(seed)
-grant(recovery) = crypto_box_seal(tenantSk, recoveryPk)
+grant(recovery) = 0x01 || crypto_box_seal(tenantSk, recoveryPk)
 ```
 - The recovery key acts as one more handler, so unlock and grant work the same way. **(proposed)**
 - Shown once, confirmed by re-typing the last group, then offered as print / .txt. The server stores `recoveryPk` and the grant, never the key.
@@ -93,13 +93,13 @@ Decided: the report is sealed to the tenant, plus a reporter copy under the case
 
 On submit, the reporter's browser does:
 ```
-envelope = crypto_box_seal({ v, caseKey }, tenantPk)
-report   = nonce(24) || crypto_secretbox_easy(reportJson, nonce, caseKey)
+envelope = 0x01 || crypto_box_seal({ v, caseKey }, tenantPk)
+report   = 0x01 || nonce(24) || crypto_secretbox_easy(reportJson, nonce, caseKey)
 ```
 and sends `lookupId`, `envelope` and `report`.
 
 - Handlers open `envelope` with `tenantSk` to get `caseKey`, then read `report`. The reporter reads the same `report` with `caseKey` from the code. So "sealed to the tenant" seals the case key, and the content is stored once. **(proposed)** Sealing the full report twice would store every attachment twice for no gain.
-- Follow-up messages, in both directions: `nonce(24) || crypto_secretbox_easy(messageJson, nonce, caseKey)`, with a fresh random nonce each time.
+- Follow-up messages, in both directions: `0x01 || nonce(24) || crypto_secretbox_easy(messageJson, nonce, caseKey)`, with a fresh random nonce each time.
 - Who sent a message (reporter or which handler) is recorded by the API from the authenticated session, not proven by the crypto. **Open:** whether to sign messages, and how to detect deleted or reordered messages (for example a hash chain over message IDs).
 - Tenant key rotation only re-seals `envelope` per case.
 
