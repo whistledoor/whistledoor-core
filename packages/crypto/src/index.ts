@@ -18,3 +18,13 @@ export {
   generatePasswordSalt,
 } from './password.js';
 export type { PasswordHashParams, PasswordKeys } from './password.js';
+export { CiphertextFormatError, DecryptionError } from './errors.js';
+export {
+  generateKeyPair,
+  grantTenantKey,
+  openTenantGrant,
+  regrantTenantKey,
+  unwrapHandlerSecretKey,
+  wrapHandlerSecretKey,
+} from './keys.js';
+export type { KeyPair } from './keys.js';
