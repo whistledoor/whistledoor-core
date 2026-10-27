@@ -25,7 +25,7 @@ export const MIN_PASSWORD_HASH_PARAMS: Readonly<PasswordHashParams> = Object.fre
   memLimit: 19 * 1024 * 1024,
 });
 
-/** Proposed in crypto-design.md section 3; final values are open item 6. */
+/** Proposed in crypto-design.md section 3; final values are open item 2. */
 export const DEFAULT_PASSWORD_HASH_PARAMS: Readonly<PasswordHashParams> = Object.freeze({
   opsLimit: 3,
   memLimit: 64 * 1024 * 1024,

@@ -52,7 +52,7 @@ kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
 - **Parameters (proposed):** `opslimit = 3`, `memlimit = 64 MiB`. This is close to Bitwarden's Argon2id default and runs in about a second on a recent laptop. Stored per handler, so they can be raised later by re-deriving at the next login.
 - **Client minimum (proposed):** `opslimit >= 2`, `memlimit >= 19 MiB` (19,922,944 bytes), OWASP's minimum Argon2id configuration. Parameters come from the server, so a compromised server (threat model, actor 2) could serve cheap ones, receive an `authKey` from a weak hash, and guess the password offline far faster, which also yields `kek`. The browser therefore refuses to derive with parameters below this floor and stops the login without sending anything. The floor is a constant in `packages/crypto`, never fetched from the server.
   - The fake-salt response for unknown emails returns the current defaults, so it never trips the floor.
-  - The final defaults (open item 6) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
+  - The final defaults (open item 2) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
 - `master` is wiped with `memzero` right after the two subkeys are derived.
 - Changing the password: derive new `authKey` and `kek`, re-wrap the handler's private key, update both on the server in one request. The key pair stays the same.
 
@@ -72,9 +72,22 @@ One handler key pair serves every tenant the handler belongs to, which keeps the
 grant(handler) = crypto_box_seal(tenantSk, handlerPk)
 ```
 - **Unlock:** password → `kek` → open `wrappedHandlerSk` → `handlerSk` → `crypto_box_seal_open(grant)` → `tenantSk`.
-- **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first).
-- **Remove:** delete that handler's grant. **Open:** rotating the tenant key afterwards, since a removed handler may have kept `tenantSk`. Rotation means a new tenant key pair and re-sealing every case's envelope (section 5), not re-encrypting content.
-- **Open, key substitution:** a compromised server could hand an unlocked handler its own public key instead of the new handler's, and receive `tenantSk`. Likewise it could serve reporters a fake `tenantPk`. Candidate fix: show a short fingerprint (`crypto_generichash` of the public key, grouped) on both screens during a grant, and print the tenant fingerprint on the QR poster. This is the same class of risk as serving modified code in the threat model.
+- **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `0x01 || crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first). The grant is only uploaded after the fingerprint check below.
+- **Remove:** delete that handler's grant, then rotate the tenant key (below).
+
+**Fingerprints.** Decided 2026-10-27. A compromised server could hand an unlocked handler its own public key instead of the new handler's and receive `tenantSk`, or serve reporters a fake `tenantPk`. Public keys are therefore checked by fingerprint:
+```
+fingerprint(pk) = crypto_generichash(13, pk) with the last 4 bits cleared   // 100 bits
+```
+shown in the case-code format (section 2): 20 Crockford characters, `XXXX-XXXX-XXXX-XXXX-XXXX`. 100 bits make finding another key with the same fingerprint impractical.
+- **Grant:** the new handler's app shows their own fingerprint. They read it to the granting handler in person or by phone; the granting handler types the last group, as when confirming a case code. Only on a match is the grant uploaded. This step cannot be skipped.
+- **Recovery key:** no check needed; `recoveryPk` is derived in the same browser that holds the key.
+- **Reporters:** the QR poster links to `https://<tenant>.melden.whistledoor.at/#fp=<20 characters>`. Browsers never send the fragment to the server. The reporter app compares it with the fetched `tenantPk` and refuses to submit on a mismatch. This turns key substitution into code substitution, which the published bundle hash makes detectable (threat model D9). Reporters who type the address by hand get no check.
+
+**Tenant key rotation.** Decided 2026-10-27. A removed handler keeps whatever they have already seen: `tenantSk` and every `caseKey` they could open. Rotation cannot undo that. It protects reports filed after the removal, in case the removed handler later obtains ciphertext (a database leak, or someone helping them).
+- Offered on every removal, on by default, and mandatory when the removal reason is "conflict".
+- Done by the removing handler's browser, in one request: new tenant key pair; for every case, open `envelope` with the old `tenantSk` and seal `caseKey` to the new `tenantPk`; new grants for every remaining handler; a new recovery grant, which needs only `recoveryPk`, not the recovery key. No report content is re-encrypted.
+- The tenant fingerprint changes, so old posters stop working. The handler app says so and offers new posters. On a mismatch the reporter page says the poster is out of date and points to the current one or to typing the address.
 
 **Recovery key.** Decided: mandatory at onboarding unless there are at least two handlers.
 ```
@@ -99,8 +112,17 @@ report   = nonce(24) || crypto_secretbox_easy(reportJson, nonce, caseKey)
 and sends `lookupId`, `envelope` and `report`.
 
 - Handlers open `envelope` with `tenantSk` to get `caseKey`, then read `report`. The reporter reads the same `report` with `caseKey` from the code. So "sealed to the tenant" seals the case key, and the content is stored once. **(proposed)** Sealing the full report twice would store every attachment twice for no gain.
-- Follow-up messages, in both directions: `nonce(24) || crypto_secretbox_easy(messageJson, nonce, caseKey)`, with a fresh random nonce each time.
-- Who sent a message (reporter or which handler) is recorded by the API from the authenticated session, not proven by the crypto. **Open:** whether to sign messages, and how to detect deleted or reordered messages (for example a hash chain over message IDs).
+- Follow-up messages, in both directions: `0x01 || nonce(24) || crypto_secretbox_easy(messageJson, nonce, caseKey)`, with a fresh random nonce each time.
+- **Message chain.** Decided 2026-10-27. The report is message 0. Every message's JSON, inside the encryption, carries:
+  ```
+  seq   = seq of prev + 1                                  // report: 0
+  prev  = crypto_generichash(32, stored ciphertext of the previous message)   // report: absent
+  role  = "reporter" | "handler"
+  ```
+  The server cannot change these fields. Clients check the chain and warn about gaps, reordering or inserted messages. `role` inside the encryption stops the server from relabeling who wrote a message.
+  - Two messages written at the same time share the same `prev`. Both are shown, ordered by `seq` and time, without a warning. The next message chains to the newest one its writer saw.
+  - Not detected: removal of the newest messages (no client keeps state between visits), and removal of one branch of such a fork.
+  - Not proven: which person wrote a message. Everyone holding `caseKey` (the reporter and every handler) can write as any role. The API still records the authenticated handler. Signatures (`crypto_sign`) would add only that, so they are not used and not on the list in section 1.
 - Tenant key rotation only re-seals `envelope` per case.
 
 ## 6. Files
@@ -109,7 +131,18 @@ Decided: files are encrypted in the browser.
 
 - Each file gets its own random 32-byte `fileKey`. The file is encrypted with `crypto_secretstream_xchacha20poly1305` in 64 KiB chunks, the last chunk tagged `FINAL`, so truncation and reordering are detected. **(proposed)**
 - File name, type, size, `fileKey` and the stream header go into the report or message JSON, so they are under `caseKey` too. The server sees only an opaque object and its size.
-- **Open:** padding file sizes into buckets to hide exact length; maximum file size; stripping metadata (EXIF, document author) before encryption. Metadata stripping is not crypto but matters for reporter identity.
+- Stored file objects start with `0x01` like every other ciphertext (section 1).
+- **Padding.** Decided 2026-10-27. Before encryption the file is padded with zero bytes to the Padmé length, which leaks only O(log log L) bits of the size at a cost of at most 12%:
+  ```
+  E = floor(log2(L)), S = floor(log2(E)) + 1, mask = 2^(E - S) - 1
+  padded(L) = (L + mask) & ~mask
+  ```
+  Files of 0 or 1 bytes are not padded (`log2` is undefined there). The true size is in the encrypted JSON; the reader cuts the padding off.
+- **Limits.** Decided 2026-10-27: 25 MiB per file, 100 MiB per message (the report counts as one). Enforced in the browser before encryption and by the API on the padded size. Can be raised later.
+- **Metadata.** Decided 2026-10-27. Not crypto, but it identifies reporters.
+  - JPEG, PNG and WebP are re-encoded in the browser through a canvas, which drops EXIF including GPS.
+  - Other files (PDF, Office, HEIC outside Safari) cannot be cleaned reliably in the browser. The reporter app warns that documents can contain the author's name and suggests a screenshot or printing to PDF.
+  - The file name defaults to "Anhang 1", "Anhang 2", …; the reporter can rename it. The original name is not kept.
 
 ## 7. Keys in memory
 
@@ -134,8 +167,4 @@ Nothing in this table lets the server read content without a handler password, a
 ## Open items
 
 1. Crockford check symbol for the case code.
-2. Tenant key rotation when a handler is removed.
-3. Key substitution: fingerprints for grants and for `tenantPk`.
-4. Message signing and detecting deleted or reordered messages.
-5. File size padding, size limit, metadata stripping.
-6. Final Argon2id parameters after measuring on low-end devices; they must stay at or above the client minimum in section 3.
+2. Final Argon2id parameters after measuring on low-end devices; they must stay at or above the client minimum in section 3.
