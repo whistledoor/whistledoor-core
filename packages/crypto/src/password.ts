@@ -16,11 +16,28 @@ export interface PasswordHashParams {
   memLimit: number;
 }
 
+/**
+ * The weakest params the client accepts. A constant, never fetched: a
+ * compromised server must not be able to make offline guessing cheap.
+ */
+export const MIN_PASSWORD_HASH_PARAMS: Readonly<PasswordHashParams> = Object.freeze({
+  opsLimit: 2,
+  memLimit: 19 * 1024 * 1024,
+});
+
 /** Proposed in crypto-design.md section 3; final values are open item 6. */
 export const DEFAULT_PASSWORD_HASH_PARAMS: Readonly<PasswordHashParams> = Object.freeze({
   opsLimit: 3,
   memLimit: 64 * 1024 * 1024,
 });
+
+/** Thrown when params are below MIN_PASSWORD_HASH_PARAMS or not integers. */
+export class PasswordHashParamsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PasswordHashParamsError';
+  }
+}
 
 export interface PasswordKeys {
   /** Sent hex-encoded to better-auth as the login password; hashed again there. */
@@ -40,15 +57,20 @@ export async function generatePasswordSalt(random?: Uint8Array): Promise<Uint8Ar
   return salt;
 }
 
-/** Stretches the password with Argon2id and splits the result into authKey and kek. */
+/**
+ * Stretches the password with Argon2id and splits the result into authKey and
+ * kek. The password is NFC-normalized first; throws PasswordHashParamsError
+ * before any work if params are below the floor.
+ */
 export async function derivePasswordKeys(
   password: string,
   salt: Uint8Array,
   params: PasswordHashParams = DEFAULT_PASSWORD_HASH_PARAMS,
 ): Promise<PasswordKeys> {
   assertSalt(salt);
+  assertParams(params);
   const sodium = await getSodium();
-  const passwordBytes = new TextEncoder().encode(password);
+  const passwordBytes = new TextEncoder().encode(password.normalize('NFC'));
   let master: Uint8Array | undefined;
   try {
     master = sodium.crypto_pwhash(
@@ -74,6 +96,18 @@ export async function derivePasswordKeys(
 /** The form in which authKey is sent to better-auth. */
 export function encodeAuthKey(authKey: Uint8Array): string {
   return Array.from(authKey, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function assertParams(params: PasswordHashParams): void {
+  // Number.isSafeInteger also rejects NaN, which would pass a plain `<` check.
+  if (!Number.isSafeInteger(params.opsLimit) || !Number.isSafeInteger(params.memLimit)) {
+    throw new PasswordHashParamsError('Argon2id params must be integers');
+  }
+  if (params.opsLimit < MIN_PASSWORD_HASH_PARAMS.opsLimit || params.memLimit < MIN_PASSWORD_HASH_PARAMS.memLimit) {
+    throw new PasswordHashParamsError(
+      `Argon2id params below the minimum (opsLimit ${params.opsLimit}, memLimit ${params.memLimit})`,
+    );
+  }
 }
 
 function assertSalt(salt: Uint8Array): void {

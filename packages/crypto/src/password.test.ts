@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PASSWORD_HASH_PARAMS,
+  MIN_PASSWORD_HASH_PARAMS,
+  PasswordHashParamsError,
   derivePasswordKeys,
   encodeAuthKey,
   generatePasswordSalt,
 } from './password.js';
 import { getSodium } from './sodium.js';
 
-// Vectors computed independently, without libsodium: master from OpenSSL 3.5
-// `kdf ARGON2ID` (lanes 1, memcost = memLimit / 1024 KiB), subkeys from Python's
+// Vectors computed independently, without libsodium: password NFC-normalized
+// with Python's unicodedata, master from OpenSSL 3.5 `kdf ARGON2ID` (lanes 1, memcost = memLimit / 1024 KiB), subkeys from Python's
 // hashlib.blake2b(key=master, salt=LE64(id) || 0^8, person="WDpass01" || 0^8).
 const VECTORS = [
   {
@@ -20,24 +22,25 @@ const VECTORS = [
     kek: '67e21794bc9aed6cdc75fa58c3e7e893c6ab5defa26584ad217394dfb9bba884',
   },
   {
-    name: 'non-ASCII, UTF-8 encoded',
+    name: 'non-ASCII at the floor',
+    // Escaped so the test file cannot silently change normalization form.
     password: 'Grüße, Wien! \u{1f511}',
     salt: 'ffffffffffffffffffffffffffffffff',
-    params: { opsLimit: 2, memLimit: 8 * 1024 * 1024 },
-    authKey: 'f3d008a03c5c97652c7d6f63de95fc005190ccb79ca0d6e700afb7faf2b54114',
-    kek: 'f35813dbba355bff3a7da5d47e43b2d0f76bf90721331527ae47953a5cc4be37',
+    params: MIN_PASSWORD_HASH_PARAMS,
+    authKey: 'aedec1ffdc410c49e7573cf41f34e8bdbc2fabe74aaaa34bfbb4e3b5fc6f6c58',
+    kek: 'ce17ca3ad7767376ff04855241fc8bd03596eeca89710712ca0108856216ff82',
   },
   {
     name: 'one character',
     password: 'a',
     salt: 'a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5',
-    params: { opsLimit: 1, memLimit: 1024 * 1024 },
-    authKey: 'a9714a27c046f4be4e0bb43169fb215656ac4937555e25e2d15d9cbb76f31fe2',
-    kek: '88342c358f73a01c3fbd6259b55714edd9ad0c3036f9bd961d9225264ad1ac44',
+    params: { opsLimit: 4, memLimit: 19 * 1024 * 1024 },
+    authKey: '6bccd02537c4cbe201afbe5c0b7412bec7d8ba6fbad19c4e441e23bd71999100',
+    kek: '0752bb86e8170f03303d40e90cd934ba315c9abf99ed4ba618e72de1c9324969',
   },
 ] as const;
 
-const FAST_PARAMS = VECTORS[2].params;
+const FAST_PARAMS = MIN_PASSWORD_HASH_PARAMS;
 
 function fromHex(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/../g) ?? [], (pair) => parseInt(pair, 16));
@@ -73,6 +76,26 @@ describe('derivePasswordKeys', () => {
     for (const candidate of fromAuthKey) {
       expect(sodium.memcmp(candidate, kek)).toBe(false);
     }
+  });
+
+  it('normalizes the password to NFC', async () => {
+    const vector = VECTORS[1];
+    // Same text as the vector, but with u + combining diaeresis (NFD).
+    const nfd = 'Grüße, Wien! \u{1f511}';
+    expect(nfd).not.toBe(vector.password);
+    const keys = await derivePasswordKeys(nfd, fromHex(vector.salt), vector.params);
+    expect(encodeAuthKey(keys.kek)).toBe(vector.kek);
+  });
+
+  it.each([
+    { opsLimit: 1, memLimit: 64 * 1024 * 1024 },
+    { opsLimit: 3, memLimit: 19 * 1024 * 1024 - 1 },
+    { opsLimit: 1, memLimit: 8192 },
+    { opsLimit: Number.NaN, memLimit: 64 * 1024 * 1024 },
+    { opsLimit: 3, memLimit: Number.NaN },
+    { opsLimit: 2.5, memLimit: 64 * 1024 * 1024 },
+  ])('rejects params below the floor or not integers: %o', async (params) => {
+    await expect(derivePasswordKeys('a', fromHex(VECTORS[2].salt), params)).rejects.toThrow(PasswordHashParamsError);
   });
 
   it('gives different keys for a different salt', async () => {

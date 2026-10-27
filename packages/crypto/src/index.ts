@@ -10,7 +10,9 @@ export {
 export type { CaseCodeErrorReason, CaseKeys } from './case-code.js';
 export {
   DEFAULT_PASSWORD_HASH_PARAMS,
+  MIN_PASSWORD_HASH_PARAMS,
   PASSWORD_SALT_BYTES,
+  PasswordHashParamsError,
   derivePasswordKeys,
   encodeAuthKey,
   generatePasswordSalt,
