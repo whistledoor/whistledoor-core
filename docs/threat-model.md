@@ -42,7 +42,7 @@ An attacker with full access to the production VM, the database, object storage 
 - **Can see:** ciphertext of all reports, messages and attachments; metadata such as tenant, case timestamps, number and size of messages and attachments, handler accounts and emails, the server-side hash of each `authKey`, and each handler's wrapped private key and wrapped tenant key.
 - **Cannot see:** report content, case codes, passwords, `kek`s or unlocked private keys (D1, D3, D5). Breaking a case code by guessing is not practical at 100 bits (D3).
 - **Can try:**
-  - *Offline password guessing.* With a handler's wrapped key and the Argon2id salt, the attacker can guess the handler's password offline at Argon2id cost. Strength depends on the password and on the Argon2id parameters, which are **open** (to be fixed in `docs/crypto-design.md`).
+  - *Offline password guessing.* With a handler's wrapped key and the Argon2id salt, the attacker can guess the handler's password offline at Argon2id cost. Strength depends on the password and on the Argon2id parameters (`docs/crypto-design.md` section 3: 3 passes, 64 MiB, with a client-side floor of 2 passes, 19 MiB).
   - *Serving modified code.* An attacker who controls the server can send reporters or handlers a changed app that leaks plaintext or keys. This is the largest remaining risk for any browser-based end-to-end system. For the reporter app, D9 makes a modified bundle detectable by anyone who compares hashes, but a single browser does not check this automatically. **Open:** whether and how to offer automatic checks (for example a verifier tool or browser extension).
   - *Withholding or reordering ciphertext.* Integrity of individual messages comes from libsodium's authenticated encryption (D2). A hash chain inside each message's encryption lets clients detect deleted, reordered, inserted or replayed messages (`docs/crypto-design.md` section 5). Removing the newest messages stays undetected, because no client keeps state between visits.
   - *Key substitution.* Handing a granting handler its own public key, or reporters a fake `tenantPk`. Grants require an out-of-band fingerprint check; the QR poster carries the tenant fingerprint, which the reporter app checks (`docs/crypto-design.md` section 4). Reporters who type the address by hand are not covered.
@@ -86,7 +86,7 @@ The company's network team, a proxy, or anyone watching traffic on the company n
 
 Summary of the points marked **open** above, to be settled in `docs/crypto-design.md` or the plan:
 
-1. Argon2id parameters for handler passwords and recovery keys.
+1. ~~Argon2id parameters for handler passwords and recovery keys.~~ Settled in `docs/crypto-design.md` section 3. Recovery keys need no Argon2id: they carry 160 random bits (section 4).
 2. How a reporter's case code is turned into something the server can use to find the case, without the server learning the code.
 3. ~~Detecting deleted, reordered or replayed messages within a case.~~ Settled in `docs/crypto-design.md` section 5, except removal of the newest messages.
 4. Automatic verification of the published reporter bundle hash.

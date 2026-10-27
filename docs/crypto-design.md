@@ -34,7 +34,15 @@ Decided: 100 random bits, 20 Base32 characters in 5 groups, shown once, last gro
 - `lookupId` goes to the server and identifies the case. The server stores only `crypto_generichash(lookupId)`, so a database leak does not let anyone log in as the reporter. **(proposed)**
 - `caseKey` never leaves the reporter's browser except sealed to the tenant (section 5).
 - 100 bits makes guessing a `lookupId` or `caseKey` impractical, so no slow hash is needed here. The API still rate-limits lookups.
-- **Open:** a Crockford check symbol to catch typos before the lookup request. Without it, a typo simply finds no case.
+- **Check character (proposed 2026-10-27).** A 21st character catches typos in the browser, before any lookup request. Without it, a typo looks exactly like "no such case": the reporter may think the report was deleted, and every typo counts against the lookup rate limit.
+  - Crockford's own check symbol (mod 37) is not used: it adds `* ~ $ = U`, which are awkward on phone keyboards and on paper, and 5 in 37 codes would need one.
+  - Instead, with the 20 code characters as values `c_1 … c_20` (0–31) and arithmetic in GF(2^5) with polynomial `x^5 + x^2 + 1`:
+    ```
+    check = sum over i = 1..20 of  alpha^i * c_i      // alpha = x, i.e. 2
+    ```
+    encoded as one more character of the same alphabet. The weights `alpha^1 … alpha^20` are distinct and non-zero, so every single wrong character and every swap of two adjacent different characters changes `check`.
+  - Display: `XXXX-XXXX-XXXX-XXXX-XXXXC`, the check character joins the last group. On input exactly 21 characters are required; a wrong check character is reported as a typo and nothing is sent.
+  - Not cryptographic and adds no security: it is computed from the code, so it reveals nothing new. Generation and derivation do not change; `codeBytes` are still the 13 bytes of the first 20 characters.
 
 ## 3. Handler password: authKey and kek
 
@@ -49,7 +57,18 @@ kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
 - `password` is normalized to Unicode NFC, then UTF-8 encoded. The same password with umlauts can otherwise arrive as NFC or NFD depending on OS, keyboard or copy-paste, and the handler would be locked out. No other changes: no trimming, no case folding. **(proposed)**
 - `salt`: 16 random bytes per handler, stored on the server next to `opslimit` and `memlimit`, fetched by email before login. For unknown emails the server returns a deterministic fake salt (keyed hash of the email) so the endpoint does not reveal who has an account. **(proposed)**
 - `authKey` is sent hex-encoded as the better-auth "password"; better-auth hashes it again. A server that only stores that hash cannot recover `kek`.
-- **Parameters (proposed):** `opslimit = 3`, `memlimit = 64 MiB`. This is close to Bitwarden's Argon2id default and runs in about a second on a recent laptop. Stored per handler, so they can be raised later by re-deriving at the next login.
+- **Parameters (proposed final 2026-10-27):** `opslimit = 3`, `memlimit = 64 MiB`, close to Bitwarden's Argon2id default. Stored per handler, so they can be raised later by re-deriving at the next login.
+  - Measured with `libsodium-wrappers-sumo` 0.8.4 (WebAssembly, one lane), median of 3:
+
+    | Where | 2 / 19 MiB (floor) | 3 / 32 MiB | 2 / 64 MiB | 3 / 64 MiB |
+    | --- | --- | --- | --- | --- |
+    | Node 22, Apple M3 Pro | 22 ms | 54 ms | 82 ms | 130 ms |
+    | Chromium, M3 Pro | 20 ms | 54 ms | 82 ms | 117 ms |
+    | Chromium, CPU throttled 4x | 89 ms | 225 ms | 324 ms | 464 ms |
+    | Chromium, CPU throttled 6x | 126 ms | 330 ms | 457 ms | 662 ms |
+
+  - CPU throttling does not model the slower memory of cheap phones, so a low-end Android phone is estimated at 10–20x the M3 Pro: about 1.3–2.6 s for one login. Handlers log in once per session, mostly from office computers, so that is acceptable. 128 MiB is not used: it doubles that time and risks WebAssembly allocation failures on phones with little memory.
+  - Before 1.0, one measurement on a real low-end Android phone confirms this. If it takes more than about 3 s, lower `opslimit` to 2 and keep 64 MiB.
 - **Client minimum (proposed):** `opslimit >= 2`, `memlimit >= 19 MiB` (19,922,944 bytes), OWASP's minimum Argon2id configuration. Parameters come from the server, so a compromised server (threat model, actor 2) could serve cheap ones, receive an `authKey` from a weak hash, and guess the password offline far faster, which also yields `kek`. The browser therefore refuses to derive with parameters below this floor and stops the login without sending anything. The floor is a constant in `packages/crypto`, never fetched from the server.
   - The fake-salt response for unknown emails returns the current defaults, so it never trips the floor.
   - The final defaults (open item 2) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
@@ -166,5 +185,4 @@ Nothing in this table lets the server read content without a handler password, a
 
 ## Open items
 
-1. Crockford check symbol for the case code.
-2. Final Argon2id parameters after measuring on low-end devices; they must stay at or above the client minimum in section 3.
+None. Section 2 (check character) and section 3 (final Argon2id parameters) carry proposals from 2026-10-27; section 3 still needs one measurement on a real low-end phone before 1.0.
