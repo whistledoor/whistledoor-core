@@ -33,8 +33,9 @@ jobs:
 
       - run: pnpm test:node
 
-      # Headless tests only need Chromium's headless shell, not the full
-      # browser, and far fewer system packages.
+      # Headless tests only need Chromium's headless shell. Its shared libraries
+      # are already on the ubuntu-24.04 image; `playwright install-deps` would
+      # only add fonts through apt, whose mirror has been slow enough to hang CI.
       - name: Read Playwright version
         id: playwright
         run: echo "version=$(pnpm --filter @whistledoor/crypto exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -50,9 +51,5 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         timeout-minutes: 3
         run: pnpm --filter @whistledoor/crypto exec playwright install --only-shell chromium
-
-      - name: Install system packages for the headless shell
-        timeout-minutes: 5
-        run: pnpm --filter @whistledoor/crypto exec playwright install-deps chromium-headless-shell
 
       - run: pnpm test:browser
