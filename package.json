@@ -1,0 +1,16 @@
+{
+  "name": "whistledoor-core",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:node": "pnpm -r test:node",
+    "test:browser": "pnpm -r test:browser"
+  }
+}
