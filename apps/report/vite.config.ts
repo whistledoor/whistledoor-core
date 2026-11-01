@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
@@ -30,6 +32,7 @@ function cspMetaTag(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), cspMetaTag()],
+  plugins: [react(), tailwindcss(), cspMetaTag()],
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: { assetsInlineLimit: 0 },
 });

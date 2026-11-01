@@ -11,11 +11,30 @@ import {
 } from '@whistledoor/crypto';
 import type { ChainIssue, ChainLink, ChainedMessage, MessageRole } from '@whistledoor/crypto';
 import type { CaseStatus, OpenedCase, ReportApi, StoredMessage } from '@whistledoor/api-contract';
+import { isCategory } from './categories';
+import type { Category, ReportKind } from './categories';
 
 // The reporter's side of crypto-design.md sections 2 and 5.
 
-export interface ReportContent {
+export interface ReportDraft {
+  kind: ReportKind;
+  name: string;
+  phone: string;
+  category: Category | '';
   text: string;
+}
+
+export const EMPTY_DRAFT: ReportDraft = { kind: 'anonymous', name: '', phone: '', category: '', text: '' };
+
+export interface MessageContent {
+  text: string;
+}
+
+export interface ReportContent extends MessageContent {
+  kind: ReportKind;
+  category: Category;
+  name?: string;
+  phone?: string;
 }
 
 export interface CaseMessage extends ChainedMessage {
@@ -23,6 +42,8 @@ export interface CaseMessage extends ChainedMessage {
   createdAt: string;
   role: MessageRole;
   text: string;
+  /** Only on the report itself. */
+  category?: Category;
 }
 
 export interface OpenCase {
@@ -43,8 +64,22 @@ async function fromBase64(text: string): Promise<Uint8Array> {
   return (await getSodium()).from_base64(text);
 }
 
-function encode(link: ChainLink, content: ReportContent): Uint8Array {
+function encode(link: ChainLink, content: MessageContent): Uint8Array {
   return encoder.encode(JSON.stringify({ ...link, ...content }));
+}
+
+/** An anonymous report carries no identity, even if the fields were filled in before switching. */
+export function toReportContent(draft: ReportDraft, category: Category): ReportContent {
+  const content: ReportContent = { kind: draft.kind, category, text: draft.text.trim() };
+  if (draft.kind === 'confidential') {
+    if (draft.name.trim()) {
+      content.name = draft.name.trim();
+    }
+    if (draft.phone.trim()) {
+      content.phone = draft.phone.trim();
+    }
+  }
+  return content;
 }
 
 /** The last group of the formatted code, which the reporter types to confirm. */
@@ -76,8 +111,16 @@ async function readMessage(stored: StoredMessage, caseKey: Uint8Array): Promise<
   const ciphertext = await fromBase64(stored.ciphertext);
   const json: unknown = JSON.parse(decoder.decode(await decryptMessage(ciphertext, caseKey)));
   const link = parseChainLink(json);
-  const { text } = json as ReportContent;
-  return { id: stored.id, createdAt: stored.createdAt, ciphertext, link, role: link.role, text };
+  const { text, category } = json as MessageContent & { category?: unknown };
+  return {
+    id: stored.id,
+    createdAt: stored.createdAt,
+    ciphertext,
+    link,
+    role: link.role,
+    text,
+    ...(isCategory(category) ? { category } : {}),
+  };
 }
 
 export async function openCase(api: ReportApi, code: Uint8Array): Promise<OpenCase> {

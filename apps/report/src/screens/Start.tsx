@@ -1,14 +1,17 @@
-import { Link } from '@tanstack/react-router';
 import { ORPCError } from '@orpc/client';
+import { Link } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
 import { useTenant } from '../api/useTenant';
 import { useI18n } from '../i18n/i18n';
+import { Notice } from '../ui/Notice';
+import { Screen } from '../ui/Screen';
 
 const EXTERNAL_OFFICE = 'https://www.bak.gv.at';
 
 function ExternalOffice() {
   const { t } = useI18n();
   return (
-    <a href={EXTERNAL_OFFICE} rel="noreferrer" target="_blank">
+    <a className="underline" href={EXTERNAL_OFFICE} rel="noreferrer" target="_blank">
       {t.externalOfficeName}
     </a>
   );
@@ -19,39 +22,41 @@ export function Start() {
   const { data: tenant, error, isPending, refetch } = useTenant();
 
   if (isPending) {
-    return <p>{t.loading}</p>;
+    return <p className="text-muted-foreground">{t.loading}</p>;
   }
   if (!tenant) {
     return error instanceof ORPCError && error.code === 'NOT_FOUND' ? (
-      <p className="notice">{t.unknownAddress}</p>
+      <Notice>{t.unknownAddress}</Notice>
     ) : (
-      <>
-        <p className="notice">{t.unreachable}</p>
-        <button type="button" onClick={() => void refetch()}>
+      <Screen>
+        <Notice>{t.unreachable}</Notice>
+        <Button variant="outline" onClick={() => void refetch()}>
           {t.retry}
-        </button>
-      </>
+        </Button>
+      </Screen>
     );
   }
 
   return (
-    <>
-      <p className="notice">{t.deviceNotice}</p>
+    <Screen>
+      <Notice>{t.deviceNotice}</Notice>
       <p>{t.intro}</p>
-      <p>
-        {t.readers} {tenant.handlers.join(', ')}
-      </p>
-      <p>
-        {tenant.active ? t.externalOffice : t.inactive} <ExternalOffice />.
-      </p>
+      <div className="text-sm text-muted-foreground">
+        <p>
+          {t.readers} {tenant.handlers.join(', ')}
+        </p>
+        <p>
+          {tenant.active ? t.externalOffice : t.inactive} <ExternalOffice />.
+        </p>
+      </div>
       {tenant.active ? (
-        <Link className="button primary" to="/write">
-          {t.newReport}
-        </Link>
+        <Button asChild>
+          <Link to="/kind">{t.newReport}</Link>
+        </Button>
       ) : null}
-      <Link className="button" to="/return">
-        {t.haveCode}
-      </Link>
-    </>
+      <Button variant="outline" asChild>
+        <Link to="/return">{t.haveCode}</Link>
+      </Button>
+    </Screen>
   );
 }

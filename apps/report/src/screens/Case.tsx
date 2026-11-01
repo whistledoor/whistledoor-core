@@ -1,9 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { api } from '../api/client';
 import { openCase, postMessage } from '../case/case';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
+import { Notice } from '../ui/Notice';
+import { Screen } from '../ui/Screen';
 import { TextForm } from '../ui/TextForm';
 
 const CASE_QUERY = 'case';
@@ -13,6 +17,7 @@ function CaseView({ code }: { code: Uint8Array }) {
   const { reset } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [askingForMeeting, setAskingForMeeting] = useState(false);
   const { data, refetch } = useQuery({
     queryKey: [CASE_QUERY],
     queryFn: () => openCase(api, code),
@@ -21,7 +26,7 @@ function CaseView({ code }: { code: Uint8Array }) {
   });
 
   if (!data) {
-    return <p>{t.loading}</p>;
+    return <p className="text-muted-foreground">{t.loading}</p>;
   }
 
   const send = async (text: string, meetingRequest: boolean): Promise<string | undefined> => {
@@ -35,32 +40,38 @@ function CaseView({ code }: { code: Uint8Array }) {
   };
 
   return (
-    <>
-      <p className="step">
-        {t.status[data.status]}
-        {' · '}
-        <button
-          type="button"
-          className="link"
-          onClick={() => {
-            queryClient.removeQueries({ queryKey: [CASE_QUERY] });
-            reset();
-            void navigate({ to: '/' });
-          }}
-        >
-          {t.close}
-        </button>
-      </p>
-      <h1>{t.caseTitle}</h1>
-      {data.issues.length > 0 ? <p className="notice">{t.chainWarning}</p> : null}
+    <Screen
+      title={t.caseTitle}
+      meta={
+        <div className="flex justify-between gap-4">
+          <span>{t.status[data.status]}</span>
+          <button
+            type="button"
+            className="cursor-pointer underline"
+            onClick={() => {
+              queryClient.removeQueries({ queryKey: [CASE_QUERY] });
+              reset();
+              void navigate({ to: '/' });
+            }}
+          >
+            {t.close}
+          </button>
+        </div>
+      }
+    >
+      {data.issues.length > 0 ? <Notice>{t.chainWarning}</Notice> : null}
       {data.messages.map((message) => (
-        <article key={message.id} className={`message ${message.role}`}>
-          <p className="step">
+        <article
+          key={message.id}
+          className={`rounded-lg border p-3 ${message.role === 'reporter' ? 'ml-6 bg-muted' : 'mr-6'}`}
+        >
+          <p className="mb-1 text-xs text-muted-foreground">
             {message.role === 'reporter' ? t.roleReporter : t.roleHandler}
             {' · '}
             {new Date(message.createdAt).toLocaleDateString(language)}
+            {message.category ? ` · ${t.category[message.category]}` : ''}
           </p>
-          <p className="text">{message.text}</p>
+          <p className="wrap-anywhere whitespace-pre-wrap">{message.text}</p>
         </article>
       ))}
       <TextForm
@@ -70,11 +81,29 @@ function CaseView({ code }: { code: Uint8Array }) {
         validate={(value) => (value.trim() ? undefined : t.writeRequired)}
         onSubmit={(value) => send(value, false)}
       />
-      <p className="notice">{t.meetingNotice}</p>
-      <button type="button" onClick={() => void send(t.meetingText, true)}>
-        {t.requestMeeting}
-      </button>
-    </>
+      {askingForMeeting ? (
+        <section className="flex flex-col gap-3 rounded-lg border p-3">
+          <h2 className="font-semibold">{t.meetingTitle}</h2>
+          <Notice>{t.meetingNotice}</Notice>
+          <p>{t.meetingDetails}</p>
+          <Button
+            onClick={() => {
+              setAskingForMeeting(false);
+              void send(t.meetingText, true);
+            }}
+          >
+            {t.requestMeeting}
+          </Button>
+          <Button variant="outline" onClick={() => setAskingForMeeting(false)}>
+            {t.cancel}
+          </Button>
+        </section>
+      ) : (
+        <Button variant="outline" onClick={() => setAskingForMeeting(true)}>
+          {t.requestMeeting}
+        </Button>
+      )}
+    </Screen>
   );
 }
 

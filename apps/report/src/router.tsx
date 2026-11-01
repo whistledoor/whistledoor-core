@@ -1,6 +1,7 @@
 import { createMemoryHistory, createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { Case } from './screens/Case';
 import { Confirm } from './screens/Confirm';
+import { Kind } from './screens/Kind';
 import { Layout } from './screens/Layout';
 import { ReturnCode } from './screens/ReturnCode';
 import { Sent } from './screens/Sent';
@@ -12,6 +13,7 @@ const root = createRootRoute({ component: Layout });
 
 const screens = [
   ['/', Start],
+  ['/kind', Kind],
   ['/write', Write],
   ['/code', ShowCode],
   ['/confirm', Confirm],

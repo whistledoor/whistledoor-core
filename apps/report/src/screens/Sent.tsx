@@ -1,6 +1,8 @@
 import { Navigate, useNavigate } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
+import { Screen } from '../ui/Screen';
 
 export function Sent() {
   const { t } = useI18n();
@@ -12,21 +14,19 @@ export function Sent() {
   }
 
   return (
-    <>
-      <h1>{t.sentTitle}</h1>
+    <Screen title={t.sentTitle}>
       <p>{t.sentNext}</p>
-      <button className="primary" type="button" onClick={() => void navigate({ to: '/case' })}>
-        {t.openCase}
-      </button>
-      <button
-        type="button"
+      <p className="text-muted-foreground">{t.sentReturn}</p>
+      <Button onClick={() => void navigate({ to: '/case' })}>{t.openCase}</Button>
+      <Button
+        variant="outline"
         onClick={() => {
           reset();
           void navigate({ to: '/' });
         }}
       >
         {t.done}
-      </button>
-    </>
+      </Button>
+    </Screen>
   );
 }

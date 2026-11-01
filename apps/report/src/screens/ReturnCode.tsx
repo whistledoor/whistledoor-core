@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { openCase } from '../case/case';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
+import { Screen } from '../ui/Screen';
 import { TextForm } from '../ui/TextForm';
 
 function tryParse(input: string): Uint8Array | null {
@@ -21,11 +22,14 @@ export function ReturnCode() {
   const navigate = useNavigate();
 
   return (
-    <>
-      <p className="step">
-        <Link to="/">{t.back}</Link>
-      </p>
-      <h1>{t.returnTitle}</h1>
+    <Screen
+      title={t.returnTitle}
+      meta={
+        <Link className="underline" to="/">
+          {t.back}
+        </Link>
+      }
+    >
       <TextForm
         label={t.returnTitle}
         submitLabel={t.openCase}
@@ -43,6 +47,6 @@ export function ReturnCode() {
           return undefined;
         }}
       />
-    </>
+    </Screen>
   );
 }

@@ -10,7 +10,7 @@ Status: decided 2026-11-01. Scope and rules for `apps/report`, the page reporter
 
 ## Stack
 
-React, Vite, TanStack Router, Query and Form, as for the other apps. System fonts only.
+React, Vite, TanStack Router, Query and Form, as for the other apps. UI components are shadcn/ui on Tailwind: the code lives in this repo under `src/components/ui`, the CSS is built into one static file, and colours are CSS variables, which is what whitelabel changes. Native `<select>` instead of Radix Select, which injects a `<style>` tag the CSP blocks. System fonts only.
 
 - Routing uses memory history, so the URL stays `/` and a reload returns to the start. `#fp=<fingerprint>` belongs to the poster check and is read once on load.
 - libsodium runs as WebAssembly, which needs `'wasm-unsafe-eval'` in `script-src`.
@@ -31,13 +31,16 @@ German and English in one bundle. The tenant sets the default, the browser langu
 
 ## Screens
 
+Approved wireframes come before UI code, for every app.
+
 1. **Start:** tenant name, what the channel is for, device notice (D10), who reads reports, the external reporting office (BAK), fingerprint check.
-2. **Write:** anonymous or confidential, category, text, attachments. Warning that details can identify the reporter.
-3. **Show case code:** copy, `.txt`, print. Shown once.
-4. **Confirm last group:** on a mismatch nothing is sent. The code is confirmed before sending, so no one ends up with a sent report and a lost code.
-5. **Sent:** what happens next and by when.
-6. **Return with code:** the check character catches typos in the browser.
-7. **Case:** status, messages, reply, chain warnings, meeting request.
+2. **Kind:** anonymous or confidential, with optional name and phone.
+3. **Content:** category, description, attachments. Warning that details can identify the reporter.
+4. **Show case code:** copy, `.txt`, print. Shown once.
+5. **Confirm last group:** on a mismatch nothing is sent. The code is confirmed before sending, so no one ends up with a sent report and a lost code.
+6. **Sent:** what happens next and by when.
+7. **Return with code:** the check character catches typos in the browser.
+8. **Case:** status, messages, reply, chain warnings, meeting request.
 
 Error states: outdated poster (fingerprint mismatch, submit blocked), API unreachable (text stays in the form), unknown address.
 
@@ -79,8 +82,8 @@ CI builds twice in a clean environment and fails if the output differs. Each Git
 
 ## Stages
 
-1. **Tracer bullet:** screens 1–7, text only, DE and EN, fake in-memory API, then the real API (`whistledoor-app#5`).
-2. **First paying customer:** anonymous or confidential, categories, attachments, whitelabel, meeting request, fingerprint check.
+1. **Tracer bullet:** all screens without attachments, DE and EN, fake in-memory API, then the real API (`whistledoor-app#5`).
+2. **First paying customer:** attachments, whitelabel, fingerprint check.
 3. **After launch:** iframe embed, tenant-edited categories, more languages.
 
 ### Iframe (stage 3)

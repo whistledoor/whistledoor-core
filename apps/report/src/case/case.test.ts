@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { formatCaseCode, generateCaseCode } from '@whistledoor/crypto';
 import { createFakeApi } from '../api/fake';
-import { lastGroup, matchesLastGroup, openCase, postMessage, submitReport } from './case';
+import { EMPTY_DRAFT, lastGroup, matchesLastGroup, openCase, postMessage, submitReport, toReportContent } from './case';
+import type { ReportContent } from './case';
+
+const report = (text: string): ReportContent => ({ kind: 'anonymous', category: 'fraud', text });
 
 async function fixture() {
   const api = createFakeApi();
@@ -13,18 +16,19 @@ async function fixture() {
 describe('case', () => {
   it('reads back a submitted report', async () => {
     const { api, code, tenantPk } = await fixture();
-    await submitReport(api, code, { text: 'Hinweis' }, tenantPk);
+    await submitReport(api, code, report('Hinweis'), tenantPk);
 
     const opened = await openCase(api, code);
 
     expect(opened.status).toBe('new');
+    expect(opened.messages[0]?.category).toBe('fraud');
     expect(opened.issues).toEqual([]);
     expect(opened.messages.map((message) => message.text)).toEqual(['Hinweis']);
   });
 
   it('chains a reply to the report', async () => {
     const { api, code, tenantPk } = await fixture();
-    await submitReport(api, code, { text: 'Hinweis' }, tenantPk);
+    await submitReport(api, code, report('Hinweis'), tenantPk);
     const { messages } = await openCase(api, code);
 
     await postMessage(api, code, 'Nachtrag', messages[0]!, false);
@@ -48,11 +52,28 @@ describe('case', () => {
       return submit(input);
     };
 
-    await submitReport(api, code, { text: 'Geheimer Hinweis' }, tenantPk);
+    await submitReport(api, code, report('Geheimer Hinweis'), tenantPk);
 
     const wire = JSON.stringify(sent);
     expect(wire).not.toContain('Geheimer');
     expect(wire).not.toContain(formatCaseCode(code).replaceAll('-', ''));
+  });
+
+  it('drops identity fields from an anonymous report', () => {
+    const draft = { ...EMPTY_DRAFT, name: 'Anna', phone: '0660', text: ' Hinweis ' };
+
+    expect(toReportContent(draft, 'other')).toEqual({ kind: 'anonymous', category: 'other', text: 'Hinweis' });
+  });
+
+  it('keeps identity fields in a confidential report', () => {
+    const draft = { ...EMPTY_DRAFT, kind: 'confidential' as const, name: 'Anna', phone: ' ', text: 'Hinweis' };
+
+    expect(toReportContent(draft, 'other')).toEqual({
+      kind: 'confidential',
+      category: 'other',
+      name: 'Anna',
+      text: 'Hinweis',
+    });
   });
 
   it('confirms the last group, ignoring case and spaces', async () => {
