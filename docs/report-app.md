@@ -25,6 +25,10 @@ Referrer-Policy: no-referrer
 
 `frame-ancestors` only works as a header, not in a `<meta>` tag.
 
+### Hosting
+
+The image (`apps/report/Dockerfile`) is Caddy serving `dist` on port 80. On top of the headers above it sends `X-Content-Type-Options: nosniff`. TLS and `/api` belong to the private deployment, whose proxy sees reporter addresses and needs the same no-log rule (D7).
+
 ## Languages
 
 German and English in one bundle. The tenant sets the default, the browser language applies if the tenant has none, and the reporter can switch.
@@ -78,7 +82,7 @@ When the channel is inactive, the report page stops taking new reports and point
 
 ## Releases
 
-CI builds twice in a clean environment and fails if the output differs. Each GitHub Release publishes one SHA-256 of the bundle. The host serves exactly that release, from a prebuilt image; nothing is rebuilt on the server. The app itself does not show the hash: a page cannot vouch for itself, and reporters do not check. This is for auditors and customers who ask.
+CI builds twice in a clean environment and fails if the output differs. Each GitHub Release publishes one SHA-256 of the bundle. The host serves exactly that release, from a prebuilt image; nothing is rebuilt on the server. GHCR (`ghcr.io/whistledoor/report`) holds the image at build time only and reporters never contact it (D8). The app itself does not show the hash: a page cannot vouch for itself, and reporters do not check. This is for auditors and customers who ask.
 
 ## Stages
 
