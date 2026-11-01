@@ -72,7 +72,7 @@ async function toBase64(bytes: Uint8Array): Promise<string> {
   return (await getSodium()).to_base64(bytes);
 }
 
-async function fromBase64(text: string): Promise<Uint8Array> {
+export async function fromBase64(text: string): Promise<Uint8Array> {
   return (await getSodium()).from_base64(text);
 }
 

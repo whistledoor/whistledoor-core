@@ -16,6 +16,9 @@ export const en: typeof de = {
   inactive: "This reporting channel isn't active. You can contact the",
   newReport: 'New report',
   haveCode: 'I have a case code',
+  posterTitle: 'Outdated poster',
+  posterMismatch: "The QR code on the poster doesn't match this reporting channel. Sending is blocked.",
+  posterAdvice: 'Use the current poster or type the address.',
   stepOf: (step: number, total: number) => `Step ${step} of ${total}`,
   kindTitle: 'How do you want to report?',
   kind: {

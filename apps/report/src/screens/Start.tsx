@@ -37,6 +37,19 @@ export function Start() {
     );
   }
 
+  // An inactive channel takes no reports either way, and its screen names the BAK.
+  if (tenant.active && tenant.posterOutdated) {
+    return (
+      <Screen title={t.posterTitle}>
+        <Notice>{t.posterMismatch}</Notice>
+        <p>{t.posterAdvice}</p>
+        <Button variant="outline" asChild>
+          <Link to="/return">{t.haveCode}</Link>
+        </Button>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <Notice>{t.deviceNotice}</Notice>
