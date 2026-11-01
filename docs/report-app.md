@@ -75,7 +75,7 @@ Same origin, `https://<tenant>.melden.whistledoor.at/api/*`, under the no-log ru
 
 Files go through the API, not to object storage directly, so no second origin appears in the CSP and no storage logs see reporter addresses. oRPC sends them as multipart, with the same neutral name and type on every upload.
 
-Files are uploaded first, then the report or message that references their ids is sent, because the ids live inside the encrypted JSON. So an upload for a `lookupId` with no case yet is accepted, and the contract carries no file names, types or keys. The server must delete uploads that no report or message references after a while. Open: the ids are encrypted, so the server cannot see references, only that a `lookupId` still has no case. The 100 MiB per message has the same limit: only the browser can enforce it.
+Files are uploaded first, then the report or message is sent with their ids in `fileIds`. So an upload for a `lookupId` with no case yet is accepted, within a quota. The server deletes uploads that no report or message lists after a while, and enforces 100 MiB per message from `fileIds`. It learns which object belongs to which message; the contract carries no file names, types or keys.
 
 When the channel is inactive, the report page stops taking new reports and points to BAK. Existing reporters can still open their case.
 

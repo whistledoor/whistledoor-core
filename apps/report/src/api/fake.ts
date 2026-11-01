@@ -15,6 +15,12 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
     createdAt: new Date().toISOString(),
   });
 
+  const assertOwnFiles = (lookupId: string, fileIds: readonly string[]): void => {
+    if (fileIds.some((id) => files.get(id)?.lookupId !== lookupId)) {
+      throw new ORPCError('BAD_REQUEST');
+    }
+  };
+
   const find = (lookupId: string): OpenedCase => {
     const found = cases.get(lookupId);
     if (!found) {
@@ -35,7 +41,8 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
       }),
     },
     report: {
-      submit: async ({ lookupId, report }) => {
+      submit: async ({ lookupId, report, fileIds }) => {
+        assertOwnFiles(lookupId, fileIds);
         const stored = store(report);
         cases.set(lookupId, { status: 'new', report: stored, messages: [] });
         return { createdAt: stored.createdAt };
@@ -43,7 +50,8 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
     },
     case: {
       open: async ({ lookupId }) => find(lookupId),
-      postMessage: async ({ lookupId, ciphertext }) => {
+      postMessage: async ({ lookupId, ciphertext, fileIds }) => {
+        assertOwnFiles(lookupId, fileIds);
         const stored = store(ciphertext);
         find(lookupId).messages.push(stored);
         return { id: stored.id };

@@ -89,7 +89,7 @@ function CaseView({ code }: { code: Uint8Array }) {
         label={t.reply}
         submitLabel={t.send}
         multiline
-        validate={(value) => (value.trim() ? undefined : t.writeRequired)}
+        validate={(value) => (value.trim() || replyAttachments.length > 0 ? undefined : t.writeRequired)}
         onSubmit={async (value) => {
           const error = await send(value, false, replyAttachments);
           if (!error) {

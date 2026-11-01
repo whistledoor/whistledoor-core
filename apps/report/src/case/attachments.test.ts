@@ -99,6 +99,40 @@ describe('attachment round trip', () => {
     expect(order).toEqual(['upload', 'upload', 'submit']);
   });
 
+  it('lists the uploaded ids next to the report and the message', async () => {
+    const api = createFakeApi();
+    const code = await generateCaseCode();
+    const { tenantPk } = await api.tenant.get();
+    const sent: string[][] = [];
+    const { submit } = api.report;
+    const { postMessage: post } = api.case;
+    api.report.submit = (input) => {
+      sent.push(input.fileIds);
+      return submit(input);
+    };
+    api.case.postMessage = (input) => {
+      sent.push(input.fileIds);
+      return post(input);
+    };
+
+    await submitReport(api, code, report, tenantPk, [pdf]);
+    const opened = await openCase(api, code);
+    await postMessage(api, code, 'Nachtrag', opened.messages[0]!, false, [pdf, pdf]);
+    const { messages } = await openCase(api, code);
+
+    expect(sent).toEqual(messages.map((message) => message.attachments.map((attachment) => attachment.id)));
+  });
+
+  it('refuses ids from another case', async () => {
+    const api = createFakeApi();
+    const lookupId = 'a'.repeat(43);
+    const { id } = await api.file.upload({ lookupId, ciphertext: new File([], 'x') });
+
+    await expect(
+      api.report.submit({ lookupId: 'b'.repeat(43), envelope: 'AA', report: 'AA', fileIds: [id] }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
   it('refuses a download for another case', async () => {
     const { api, code, tenantPk } = await fixture();
     await submitReport(api, code, report, tenantPk, [pdf]);

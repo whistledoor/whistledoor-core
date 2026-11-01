@@ -123,6 +123,7 @@ export async function submitReport(
     lookupId: await toBase64(sealed.lookupId),
     envelope: await toBase64(sealed.envelope),
     report: await toBase64(sealed.report),
+    fileIds: attachments.map((attachment) => attachment.id),
   });
 }
 
@@ -169,5 +170,6 @@ export async function postMessage(
     lookupId,
     ciphertext: await toBase64(await encryptMessage(json, keys.caseKey)),
     meetingRequest,
+    fileIds: attachments.map((attachment) => attachment.id),
   });
 }
