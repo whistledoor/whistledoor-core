@@ -119,6 +119,20 @@ grant(recovery) = 0x01 || crypto_box_seal(tenantSk, recoveryPk)
 - Shown once, confirmed by re-typing the last group, then offered as print / .txt. The server stores `recoveryPk` and the grant, never the key.
 - Using it: enter the recovery key → `tenantSk` → grant to a (new) handler key pair → done.
 
+**Recovery proof.** Decided 2026-11-01. A handler who lost their second factor and has nobody to reset it proves they hold the recovery key. The key never leaves the browser, and the recovery key pair has no signing key, so the proof is opening something sealed to `recoveryPk`:
+```
+server:  challenge = randombytes_buf(32)
+         sealed    = 0x01 || crypto_box_seal(challenge, recoveryPk)     // sent to the client
+         expected  = messageHash(challenge)                             // the only thing kept
+client:  opened    = crypto_box_seal_open(sealed, recoveryKeyPair)
+         proof     = messageHash(opened)                                // sent to the server
+server:  constant-time compare of proof and expected
+```
+- **The client returns the hash, never `opened`.** `sealed` has the same shape as `grant(recovery)`, and only `recoveryPk` is needed to make one. A compromised server could send the stored grant as the challenge; a client that returned what it opened would hand over `tenantSk`. With the hash, the server learns `messageHash(tenantSk)`, which no key is derived from and which cannot be reversed for a 256-bit random value.
+- One try per challenge, valid for 5 minutes. A proof that reaches the server is audited either way. A wrong recovery key already fails to open the challenge in the browser, so that attempt sends nothing and leaves no entry.
+- The proof resets the account's second factor. It grants no key: the handler still needs their password for `kek`. A handler who also lost the password uses the recovery key for its real purpose (above).
+- Reused calls: `grantTenantKey` seals the challenge and `openTenantGrant` opens it, though neither is a grant. **Open:** give the pair its own names in `@whistledoor/crypto`, with the hash inside the client call so no caller can get it wrong.
+
 ## 5. Report and messages
 
 Decided: the report is sealed to the tenant, plus a reporter copy under the case-code key.
@@ -188,8 +202,12 @@ Decided: unlocked keys live in memory only; auto-lock after 15 minutes idle.
 | --- | --- |
 | Handler | email, `salt`, Argon2id params, hash of `authKey`, `handlerPk`, `wrappedHandlerSk`, TOTP secret |
 | Tenant | `tenantPk`, one grant per handler, recovery `recoveryPk` and grant |
+| Recovery proof | hash of the open challenge, for 5 minutes |
+| Audit log | action, acting handler, case and file ids, time; 8 years, append-only, no IP |
 | Case | hash of `lookupId`, `envelope`, `report`, `notesEnvelope`, timestamps, status |
 | Message / file / note | ciphertext, size, timestamps, sender role |
+
+Rate limits are held in process memory only, under an HMAC of the client with a key that changes daily, so no IP is stored.
 
 Nothing in this table lets the server read content without a handler password, a recovery key or a case code. Notes also need a handler password or the recovery key; a case code is not enough.
 
