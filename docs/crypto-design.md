@@ -159,7 +159,7 @@ and sends `lookupId`, `envelope` and `report`.
 Decided: files are encrypted in the browser.
 
 - Each file gets its own random 32-byte `fileKey`. The file is encrypted with `crypto_secretstream_xchacha20poly1305` in 64 KiB chunks, the last chunk tagged `FINAL`, so truncation and reordering are detected. **(proposed)**
-- File name, type, size, `fileKey` and the stream header go into the report or message JSON, so they are under `caseKey` too. The server sees only an opaque object and its size.
+- File name, type, size, `fileKey` and the stream header go into the report or message JSON, so they are under `caseKey` too. The server sees only an opaque object, its size, and which report or message lists it.
 - Stored file object: `0x01 || chunk_1 || … || chunk_n`, each chunk being the `crypto_secretstream` output for up to 64 KiB of padded plaintext plus 17 bytes. An empty file is one empty `FINAL` chunk. The reader derives the chunk count from the true size and rejects anything else.
 - **Padding.** Decided 2026-10-27. Before encryption the file is padded with zero bytes to the Padmé length, which leaks only O(log log L) bits of the size at a cost of at most 12%:
   ```
@@ -167,7 +167,7 @@ Decided: files are encrypted in the browser.
   padded(L) = (L + mask) & ~mask
   ```
   Files of 0 or 1 bytes are not padded (`log2` is undefined there). The true size is in the encrypted JSON; the reader cuts the padding off.
-- **Limits.** Decided 2026-10-27: 25 MiB per file, 100 MiB per message (the report counts as one). Enforced in the browser before encryption and by the API on the padded size. Can be raised later.
+- **Limits.** Decided 2026-10-27: 25 MiB per file, 100 MiB per message (the report counts as one). Enforced in the browser before encryption and by the API on the padded size, using the opaque file ids that a report or message lists next to its ciphertext. Can be raised later.
 - **Metadata.** Decided 2026-10-27. Not crypto, but it identifies reporters.
   - JPEG, PNG and WebP are re-encoded in the browser through a canvas, which drops EXIF including GPS.
   - Other files (PDF, Office, HEIC outside Safari) cannot be cleaned reliably in the browser. The reporter app warns that documents can contain the author's name and suggests a screenshot or printing to PDF.

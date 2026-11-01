@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { DraftAttachment } from './attachments';
 import { EMPTY_DRAFT } from './case';
 import type { ReportDraft } from './case';
 
@@ -8,6 +9,7 @@ import type { ReportDraft } from './case';
 interface Session {
   draft: ReportDraft;
   updateDraft: (patch: Partial<ReportDraft>) => void;
+  updateAttachments: (update: (current: DraftAttachment[]) => DraftAttachment[]) => void;
   clearDraft: () => void;
   code: Uint8Array | null;
   setCode: (code: Uint8Array | null) => void;
@@ -24,6 +26,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => ({
       draft,
       updateDraft: (patch) => setDraft((current) => ({ ...current, ...patch })),
+      updateAttachments: (update) =>
+        setDraft((current) => ({ ...current, attachments: update(current.attachments) })),
       clearDraft: () => setDraft(EMPTY_DRAFT),
       code,
       setCode,

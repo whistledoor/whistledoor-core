@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { api } from '../api/client';
 import { useTenant } from '../api/useTenant';
+import { toAttachmentFiles } from '../case/attachments';
 import { matchesLastGroup, submitReport, toReportContent } from '../case/case';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
@@ -32,6 +33,7 @@ export function Confirm() {
     >
       <p className="text-sm text-muted-foreground">
         {t.kind[draft.kind]} · {t.category[category]}
+        {draft.attachments.length > 0 ? ` · ${t.attachmentCount(draft.attachments.length)}` : ''}
       </p>
       <TextForm
         label={t.confirmTitle}
@@ -40,7 +42,8 @@ export function Confirm() {
         validate={(value) => (matchesLastGroup(code, value) ? undefined : t.confirmMismatch)}
         onSubmit={async () => {
           try {
-            await submitReport(api, code, toReportContent(draft, category), tenant.tenantPk);
+            const files = toAttachmentFiles(draft.attachments, t.attachmentDefaultName);
+            await submitReport(api, code, toReportContent(draft, category), tenant.tenantPk, files);
           } catch {
             return t.unreachable;
           }

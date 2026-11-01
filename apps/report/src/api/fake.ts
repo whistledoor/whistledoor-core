@@ -5,6 +5,7 @@ import type { OpenedCase, ReportApi, StoredMessage, Tenant } from '@whistledoor/
 /** In-memory stand-in for the private API, for `vite dev` and tests. */
 export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
   const cases = new Map<string, OpenedCase>();
+  const files = new Map<string, { lookupId: string; ciphertext: File }>();
   const tenantPk = generateKeyPair().then(async (pair) => (await getSodium()).to_base64(pair.publicKey));
   let nextId = 0;
 
@@ -13,6 +14,12 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
     ciphertext,
     createdAt: new Date().toISOString(),
   });
+
+  const assertOwnFiles = (lookupId: string, fileIds: readonly string[]): void => {
+    if (fileIds.some((id) => files.get(id)?.lookupId !== lookupId)) {
+      throw new ORPCError('BAD_REQUEST');
+    }
+  };
 
   const find = (lookupId: string): OpenedCase => {
     const found = cases.get(lookupId);
@@ -34,7 +41,8 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
       }),
     },
     report: {
-      submit: async ({ lookupId, report }) => {
+      submit: async ({ lookupId, report, fileIds }) => {
+        assertOwnFiles(lookupId, fileIds);
         const stored = store(report);
         cases.set(lookupId, { status: 'new', report: stored, messages: [] });
         return { createdAt: stored.createdAt };
@@ -42,10 +50,26 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
     },
     case: {
       open: async ({ lookupId }) => find(lookupId),
-      postMessage: async ({ lookupId, ciphertext }) => {
+      postMessage: async ({ lookupId, ciphertext, fileIds }) => {
+        assertOwnFiles(lookupId, fileIds);
         const stored = store(ciphertext);
         find(lookupId).messages.push(stored);
         return { id: stored.id };
+      },
+    },
+    file: {
+      // No case check: files are uploaded before the report that references them.
+      upload: async ({ lookupId, ciphertext }) => {
+        const id = String(nextId++);
+        files.set(id, { lookupId, ciphertext });
+        return { id };
+      },
+      download: async ({ lookupId, id }) => {
+        const found = files.get(id);
+        if (found?.lookupId !== lookupId) {
+          throw new ORPCError('NOT_FOUND');
+        }
+        return found.ciphertext;
       },
     },
   };

@@ -5,16 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
 import { Notice } from '../ui/Notice';
+import { saveBlob } from '../ui/saveBlob';
 import { Screen } from '../ui/Screen';
-
-function saveAsText(text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'fallcode.txt';
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 export function ShowCode() {
   const { t } = useI18n();
@@ -49,7 +41,7 @@ export function ShowCode() {
         >
           {copied ? t.copied : t.copy}
         </Button>
-        <Button variant="outline" onClick={() => saveAsText(formatted)}>
+        <Button variant="outline" onClick={() => saveBlob(new Blob([formatted], { type: 'text/plain' }), 'fallcode.txt')}>
           {t.download}
         </Button>
         <Button variant="outline" onClick={() => window.print()}>

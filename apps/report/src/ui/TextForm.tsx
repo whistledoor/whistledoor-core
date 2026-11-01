@@ -1,5 +1,6 @@
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +16,20 @@ interface TextFormProps {
   validate?: (value: string) => string | undefined;
   /** Returns an error message, or undefined on success. */
   onSubmit: (value: string) => Promise<string | undefined> | string | undefined;
+  /** Shown between the field and the submit button. */
+  children?: ReactNode;
 }
 
 /** One-field forms: case code, last group, reply. */
-export function TextForm({ label, submitLabel, multiline = false, mono = false, validate, onSubmit }: TextFormProps) {
+export function TextForm({
+  label,
+  submitLabel,
+  multiline = false,
+  mono = false,
+  validate,
+  onSubmit,
+  children,
+}: TextFormProps) {
   const [submitError, setSubmitError] = useState<string>();
   const form = useForm({
     defaultValues: { value: '' },
@@ -64,6 +75,7 @@ export function TextForm({ label, submitLabel, multiline = false, mono = false, 
           );
         }}
       </form.Field>
+      {children}
       <form.Subscribe selector={(state) => state.isSubmitting}>
         {(submitting) => (
           <Button type="submit" disabled={submitting}>
