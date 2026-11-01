@@ -105,7 +105,7 @@ shown like a case code (section 2) but without the check character: 20 Crockford
 
 **Tenant key rotation.** Decided 2026-10-27. A removed handler keeps whatever they have already seen: `tenantSk` and every `caseKey` they could open. Rotation cannot undo that. It protects reports filed after the removal, in case the removed handler later obtains ciphertext (a database leak, or someone helping them).
 - Offered on every removal, on by default, and mandatory when the removal reason is "conflict".
-- Done by the removing handler's browser, in one request: new tenant key pair; for every case, open `envelope` with the old `tenantSk` and seal `caseKey` to the new `tenantPk`; new grants for every remaining handler; a new recovery grant, which needs only `recoveryPk`, not the recovery key. No report content is re-encrypted.
+- Done by the removing handler's browser, in one request: new tenant key pair; for every case, open `envelope` with the old `tenantSk` and seal `caseKey` to the new `tenantPk`, and do the same for `notesEnvelope` and `notesKey` (section 5); new grants for every remaining handler; a new recovery grant, which needs only `recoveryPk`, not the recovery key. No report content is re-encrypted.
 - The tenant fingerprint changes, so old posters stop working. The handler app says so and offers new posters. On a mismatch the reporter page says the poster is out of date and points to the current one or to typing the address.
 
 **Recovery key.** Decided: mandatory at onboarding unless there are at least two handlers.
@@ -144,7 +144,15 @@ and sends `lookupId`, `envelope` and `report`.
   - Two messages written at the same time share the same `prev`. Both are shown, ordered by `seq` and time, without a warning. The next message chains to the newest one its writer saw.
   - Not detected: removal of the newest messages (no client keeps state between visits), and removal of one branch of such a fork.
   - Not proven: which person wrote a message. Everyone holding `caseKey` (the reporter and every handler) can write as any role. The API still records the authenticated handler. Signatures (`crypto_sign`) would add only that, so they are not used and not on the list in section 1.
-- Tenant key rotation only re-seals `envelope` per case.
+- Tenant key rotation only re-seals `envelope` and `notesEnvelope` per case.
+- **Cases entered by a handler.** Decided 2026-11-01. A report taken by phone or in a meeting is entered by a handler. The handler's browser generates a case code and does what the reporter's browser does above, so the server sees a normal case. Message 0 carries `role = "handler"`. The code is handed to the reporter once, then forgotten. If the reporter declines it, nobody holds the code and the case runs through handlers only.
+- **Internal notes.** Decided 2026-11-01. The reporter holds `caseKey`, so anything under it is readable with the case code. Notes for handlers only use a second key:
+  ```
+  notesKey      = randombytes_buf(32)                        // one per case
+  notesEnvelope = 0x01 || crypto_box_seal(notesKey, tenantPk)
+  note          = 0x01 || nonce(24) || crypto_secretbox_easy(noteJson, nonce, notesKey)
+  ```
+  The first handler to write a note creates `notesKey`. The API accepts `notesEnvelope` once per case; a handler who loses that race fetches it and uses that key. Notes sit outside the message chain and are never sent to the reporter. The server enforces that too, but the key is what protects them.
 
 ## 6. Files
 
@@ -170,7 +178,7 @@ Decided: files are encrypted in the browser.
 Decided: unlocked keys live in memory only; auto-lock after 15 minutes idle.
 
 - Nothing secret goes to `localStorage`, `sessionStorage`, IndexedDB, cookies or the service worker. A page reload means unlocking again.
-- Keys are held as `Uint8Array` in one module. Lock calls `memzero` on `kek`, `handlerSk`, every `tenantSk` and every `caseKey`, then drops the references. JavaScript gives no guarantee that copies are gone; this is best effort.
+- Keys are held as `Uint8Array` in one module. Lock calls `memzero` on `kek`, `handlerSk`, every `tenantSk`, every `caseKey` and every `notesKey`, then drops the references. JavaScript gives no guarantee that copies are gone; this is best effort.
 - The reporter app keeps `caseKey` only for the open session and never stores the case code.
 - Web Crypto non-extractable keys are not used, because libsodium needs raw bytes. **(noted, not a goal)**
 
@@ -180,10 +188,10 @@ Decided: unlocked keys live in memory only; auto-lock after 15 minutes idle.
 | --- | --- |
 | Handler | email, `salt`, Argon2id params, hash of `authKey`, `handlerPk`, `wrappedHandlerSk`, TOTP secret |
 | Tenant | `tenantPk`, one grant per handler, recovery `recoveryPk` and grant |
-| Case | hash of `lookupId`, `envelope`, `report`, timestamps |
-| Message / file | ciphertext, size, timestamps, sender role |
+| Case | hash of `lookupId`, `envelope`, `report`, `notesEnvelope`, timestamps, status |
+| Message / file / note | ciphertext, size, timestamps, sender role |
 
-Nothing in this table lets the server read content without a handler password, a recovery key or a case code.
+Nothing in this table lets the server read content without a handler password, a recovery key or a case code. Notes also need a handler password or the recovery key; a case code is not enough.
 
 ## Open items
 

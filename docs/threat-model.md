@@ -1,6 +1,6 @@
 # Threat model
 
-Status: draft, 2026-10-26. Based on the decisions in the private `whistledoor-app/docs/PLAN.md` (settled 2026-10-25). The crypto details (formats, parameters, key flows) belong in `docs/crypto-design.md`; this document only says what each actor can and cannot learn, and why.
+Status: draft, 2026-10-26, updated 2026-11-01. Based on the decisions in the private `whistledoor-app/docs/PLAN.md` (settled 2026-10-25). The crypto details (formats, parameters, key flows) belong in `docs/crypto-design.md`; this document only says what each actor can and cannot learn, and why.
 
 ## What we protect
 
@@ -17,12 +17,15 @@ Only the reporter and the tenant's case handlers should ever see 1. Nobody but t
 - **D2 libsodium high-level calls only.** `crypto_box_seal` to encrypt for a public key, `crypto_secretbox` for symmetric encryption, `crypto_pwhash` (Argon2id) for passwords. No hand-built constructions.
 - **D3 Case code.** 100 random bits, Base32, 20 characters plus a check character in 5 groups. Generated in the reporter's browser, shown once, never sent to the server.
 - **D4 Per-handler keys.** Each handler has their own key pair. The tenant key is wrapped separately for each handler, so only accounts that hold a wrapped copy can decrypt. When a handler is removed, the tenant key is rotated (offered by default, mandatory on conflict; `docs/crypto-design.md` section 4). That protects later reports; what the removed handler already saw cannot be taken back.
-- **D5 Password split.** The handler's browser runs Argon2id on the password and derives two values: `authKey`, which goes to the server for login (and is hashed again there), and `kek`, which never leaves the browser and unwraps the handler's private key. The unlocked key lives in memory only and locks after 15 minutes idle. TOTP 2FA on top.
+- **D5 Password split.** The handler's browser runs Argon2id on the password and derives two values: `authKey`, which goes to the server for login (and is hashed again there), and `kek`, which never leaves the browser and unwraps the handler's private key. The unlocked key lives in memory only and locks after 15 minutes idle. A second factor on top, passkey or TOTP, required for every account before real data exists: with the password alone, an attacker could log in, fetch the wrapped key and unlock it. A passkey cannot replace the password, because the password also produces `kek`.
 - **D6 No rescue.** If every key is lost, the reports are gone. Onboarding requires at least two handlers or a confirmed recovery key, so this does not happen by accident.
 - **D7 Report domain.** `*.melden.whistledoor.at` serves the static reporter app: no cookies, no analytics, no third-party requests, strict CSP. DNS-only on Hetzner (no Cloudflare or other proxy), no IP logging, no billing or Stripe on this domain.
 - **D8 EU hosting, no US-owned service on the report path.** Hetzner Cloud in Germany for servers, object storage and backups; an EU email provider that never sees report content.
 - **D9 Open and reproducible reporter app.** `packages/crypto` and `apps/report` are public (Apache-2.0). Builds are reproducible and the hash of every released bundle is published.
 - **D10 Device notice.** The report page and the QR poster tell reporters to use a private device on a private network.
+- **D11 Named handlers.** Every handler holds the tenant key, so every handler can read every report, including one about themselves. The report page names the handlers and points to the external reporting office, so a reporter can go there instead. Per-case exclusion is not built.
+- **D12 Retention.** Case data is deleted five years after its last processing or transfer, later only for ongoing proceedings (HSchG § 8(11)). Access is logged, and logs stay three years longer (§ 8(12), § 9(6)). Logs hold no content.
+- **D13 Embedding.** The report page cannot be framed by default. A tenant can opt in for exact hostnames. A framed page has no address bar, so a script on the customer's site could replace the form unnoticed; a link to open the page in its own window is always shown.
 
 ## Actors
 
@@ -33,7 +36,7 @@ Management or anyone at the company who is not a designated case handler, includ
 - **Can see:** that the company has a Whistledoor channel and its address; that cases exist and their status, if they have access to the handler app as a handler. Anything the reporter types into the report, if the employer is themselves a handler (that is the role, not a leak; HSchG requires handlers to be impartial and to keep the reporter's identity confidential).
 - **Cannot see:** who the reporter is, unless the report content reveals it. There is no reporter account, no email, no IP address stored (D7). They cannot open a case without the case code (D3) or a handler's key (D4, D5).
 - **Ensured by:** D1, D3, D4, D7. A non-handler with a company admin role gets no key material, because keys are wrapped per handler (D4), not per company.
-- **Limits:** a company-managed device or network is outside our control; see actor 5. Writing style and details in the report itself can identify a reporter; the reporter app should say so, but we cannot prevent it.
+- **Limits:** a handler who is the subject of a report can still read it (D11). A tenant that embeds the report page accepts the risk in D13. A company-managed device or network is outside our control; see actor 5. Writing style and details in the report itself can identify a reporter; the reporter app should say so, but we cannot prevent it.
 
 ### 2. Compromised server
 
@@ -43,7 +46,7 @@ An attacker with full access to the production VM, the database, object storage 
 - **Cannot see:** report content, case codes, passwords, `kek`s or unlocked private keys (D1, D3, D5). Breaking a case code by guessing is not practical at 100 bits (D3).
 - **Can try:**
   - *Offline password guessing.* With a handler's wrapped key and the Argon2id salt, the attacker can guess the handler's password offline at Argon2id cost. Strength depends on the password and on the Argon2id parameters (`docs/crypto-design.md` section 3: 3 passes, 64 MiB, with a client-side floor of 2 passes, 19 MiB).
-  - *Serving modified code.* An attacker who controls the server can send reporters or handlers a changed app that leaks plaintext or keys. This is the largest remaining risk for any browser-based end-to-end system. For the reporter app, D9 makes a modified bundle detectable by anyone who compares hashes, but a single browser does not check this automatically. **Open:** whether and how to offer automatic checks (for example a verifier tool or browser extension).
+  - *Serving modified code.* An attacker who controls the server can send reporters or handlers a changed app that leaks plaintext or keys. This is the largest remaining risk for any browser-based end-to-end system. For the reporter app, D9 makes a modified bundle detectable by anyone who compares hashes, but a single browser does not check this automatically, and reporters will not do it themselves. We accept that: the hash is for auditors and customers who ask, and no automatic check is planned.
   - *Withholding or reordering ciphertext.* Integrity of individual messages comes from libsodium's authenticated encryption (D2). A hash chain inside each message's encryption lets clients detect deleted, reordered, inserted or replayed messages (`docs/crypto-design.md` section 5). Removing the newest messages stays undetected, because no client keeps state between visits.
   - *Key substitution.* Handing a granting handler its own public key, or reporters a fake `tenantPk`. Grants require an out-of-band fingerprint check; the QR poster carries the tenant fingerprint, which the reporter app checks (`docs/crypto-design.md` section 4). Reporters who type the address by hand are not covered.
 - **Ensured by:** D1, D2, D3, D5.
@@ -89,7 +92,7 @@ Summary of the points marked **open** above, to be settled in `docs/crypto-desig
 1. ~~Argon2id parameters for handler passwords and recovery keys.~~ Settled in `docs/crypto-design.md` section 3. Recovery keys need no Argon2id: they carry 160 random bits (section 4).
 2. How a reporter's case code is turned into something the server can use to find the case, without the server learning the code.
 3. ~~Detecting deleted, reordered or replayed messages within a case.~~ Settled in `docs/crypto-design.md` section 5, except removal of the newest messages.
-4. Automatic verification of the published reporter bundle hash.
+4. ~~Automatic verification of the published reporter bundle hash.~~ Settled: not planned (actor 2).
 5. Published or attested builds for the handler app.
-6. Per-tenant versus shared report hostname.
+6. ~~Per-tenant versus shared report hostname.~~ Settled: one subdomain per tenant. A shared host hides little, and the app gets the tenant from the API, so this can change later.
 7. ~~Tenant key rotation when a handler is removed.~~ Settled in `docs/crypto-design.md` section 4.
