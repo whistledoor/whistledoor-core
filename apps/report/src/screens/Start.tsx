@@ -18,7 +18,7 @@ function ExternalOffice() {
 }
 
 export function Start() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { data: tenant, error, isPending, refetch } = useTenant();
 
   if (isPending) {
@@ -40,7 +40,7 @@ export function Start() {
   return (
     <Screen>
       <Notice>{t.deviceNotice}</Notice>
-      <p>{t.intro}</p>
+      <p>{tenant.branding?.intro?.[language]?.trim() || t.intro}</p>
       <div className="text-sm text-muted-foreground">
         <p>
           {t.readers} {tenant.handlers.join(', ')}
