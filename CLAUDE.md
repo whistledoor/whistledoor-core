@@ -1,6 +1,6 @@
 # whistledoor-core
 
-Public, Apache-2.0. Holds only code that sees plaintext: `packages/crypto` and `apps/report`. The private product lives in `whistledoor/whistledoor-app`; decisions are in its `docs/PLAN.md`.
+Public, Apache-2.0. Holds only code that sees plaintext, `packages/crypto` and `apps/report`, plus the API contract between `apps/report` and the private API, `packages/api-contract`. The private product lives in `whistledoor/whistledoor-app`; decisions are in its `docs/PLAN.md`.
 
 Rules:
 
