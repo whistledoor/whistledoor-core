@@ -11,6 +11,8 @@ import {
 } from '@whistledoor/crypto';
 import type { ChainIssue, ChainLink, ChainedMessage, MessageRole } from '@whistledoor/crypto';
 import type { CaseStatus, OpenedCase, ReportApi, StoredMessage } from '@whistledoor/api-contract';
+import { parseAttachments, uploadAttachments } from './attachments';
+import type { Attachment, AttachmentFile, DraftAttachment } from './attachments';
 import { isCategory } from './categories';
 import type { Category, ReportKind } from './categories';
 
@@ -22,12 +24,21 @@ export interface ReportDraft {
   phone: string;
   category: Category | '';
   text: string;
+  attachments: DraftAttachment[];
 }
 
-export const EMPTY_DRAFT: ReportDraft = { kind: 'anonymous', name: '', phone: '', category: '', text: '' };
+export const EMPTY_DRAFT: ReportDraft = {
+  kind: 'anonymous',
+  name: '',
+  phone: '',
+  category: '',
+  text: '',
+  attachments: [],
+};
 
 export interface MessageContent {
   text: string;
+  attachments?: Attachment[];
 }
 
 export interface ReportContent extends MessageContent {
@@ -42,6 +53,7 @@ export interface CaseMessage extends ChainedMessage {
   createdAt: string;
   role: MessageRole;
   text: string;
+  attachments: Attachment[];
   /** Only on the report itself. */
   category?: Category;
 }
@@ -66,6 +78,10 @@ async function fromBase64(text: string): Promise<Uint8Array> {
 
 function encode(link: ChainLink, content: MessageContent): Uint8Array {
   return encoder.encode(JSON.stringify({ ...link, ...content }));
+}
+
+function withAttachments<T extends MessageContent>(content: T, attachments: Attachment[]): T {
+  return attachments.length > 0 ? { ...content, attachments } : content;
 }
 
 /** An anonymous report carries no identity, even if the fields were filled in before switching. */
@@ -96,10 +112,13 @@ export async function submitReport(
   code: Uint8Array,
   content: ReportContent,
   tenantPk: string,
+  files: readonly AttachmentFile[] = [],
 ): Promise<void> {
   const keys = await deriveCaseKeys(code);
+  const attachments = await uploadAttachments(api, await toBase64(keys.lookupId), files);
   const link = await createChainLink('reporter');
-  const sealed = await sealReport(encode(link, content), keys, await fromBase64(tenantPk));
+  const json = encode(link, withAttachments(content, attachments));
+  const sealed = await sealReport(json, keys, await fromBase64(tenantPk));
   await api.report.submit({
     lookupId: await toBase64(sealed.lookupId),
     envelope: await toBase64(sealed.envelope),
@@ -111,7 +130,7 @@ async function readMessage(stored: StoredMessage, caseKey: Uint8Array): Promise<
   const ciphertext = await fromBase64(stored.ciphertext);
   const json: unknown = JSON.parse(decoder.decode(await decryptMessage(ciphertext, caseKey)));
   const link = parseChainLink(json);
-  const { text, category } = json as MessageContent & { category?: unknown };
+  const { text, category, attachments } = json as { text: string; category?: unknown; attachments?: unknown };
   return {
     id: stored.id,
     createdAt: stored.createdAt,
@@ -119,6 +138,7 @@ async function readMessage(stored: StoredMessage, caseKey: Uint8Array): Promise<
     link,
     role: link.role,
     text,
+    attachments: parseAttachments(attachments),
     ...(isCategory(category) ? { category } : {}),
   };
 }
@@ -138,12 +158,16 @@ export async function postMessage(
   text: string,
   previous: CaseMessage,
   meetingRequest: boolean,
+  files: readonly AttachmentFile[] = [],
 ): Promise<void> {
-  const { lookupId, caseKey } = await deriveCaseKeys(code);
+  const keys = await deriveCaseKeys(code);
+  const lookupId = await toBase64(keys.lookupId);
+  const attachments = await uploadAttachments(api, lookupId, files);
   const link = await createChainLink('reporter', previous);
+  const json = encode(link, withAttachments({ text }, attachments));
   await api.case.postMessage({
-    lookupId: await toBase64(lookupId),
-    ciphertext: await toBase64(await encryptMessage(encode(link, { text }), caseKey)),
+    lookupId,
+    ciphertext: await toBase64(await encryptMessage(json, keys.caseKey)),
     meetingRequest,
   });
 }

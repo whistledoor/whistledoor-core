@@ -43,6 +43,23 @@ export const de = {
   writeTitle: 'Was möchten Sie melden?',
   writeWarning: 'Details können Sie identifizieren.',
   writeRequired: 'Beschreiben Sie den Vorfall.',
+  attachmentAdd: '+ Anhang hinzufügen',
+  attachmentAddShort: '+ Anhang',
+  attachmentDefaultName: (number: number) => `Anhang ${number}`,
+  attachmentCount: (count: number) => (count === 1 ? '1 Anhang' : `${count} Anhänge`),
+  attachmentHint: 'Max. 25 MiB pro Datei',
+  attachmentNameLabel: 'Name des Anhangs',
+  attachmentRename: 'Umbenennen',
+  attachmentRemove: 'Entfernen',
+  attachmentDownload: 'Herunterladen',
+  attachmentDownloadFailed: 'Der Anhang konnte nicht geladen werden. Versuchen Sie es erneut.',
+  attachmentFileTooLarge: (name: string) => `„${name}“ ist größer als 25 MiB.`,
+  attachmentMessageTooLarge: (name: string) =>
+    `„${name}“ passt nicht mehr dazu: Alle Anhänge zusammen dürfen höchstens 100 MiB groß sein.`,
+  attachmentImageFailed: (name: string) =>
+    `„${name}“ lässt sich nicht als Bild lesen. Die Metadaten konnten nicht entfernt werden, deshalb wurde die Datei nicht hinzugefügt.`,
+  attachmentWarning:
+    'Dokumente können Ihren Namen als Verfasser enthalten. Sicherer ist ein Screenshot oder ein Ausdruck als PDF.',
   next: 'Weiter',
   codeTitle: 'Ihr Fallcode',
   codeWarning: 'Der Code wird nur einmal angezeigt. Ohne ihn haben Sie keinen Zugang zu Ihrem Fall, und niemand kann ihn wiederherstellen.',

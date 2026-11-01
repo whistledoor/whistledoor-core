@@ -3,9 +3,13 @@ import { Navigate, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { api } from '../api/client';
+import { toAttachmentFiles } from '../case/attachments';
+import type { DraftAttachment } from '../case/attachments';
 import { openCase, postMessage } from '../case/case';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
+import { AttachmentDownloads } from '../ui/AttachmentDownloads';
+import { AttachmentPicker } from '../ui/AttachmentPicker';
 import { Notice } from '../ui/Notice';
 import { Screen } from '../ui/Screen';
 import { TextForm } from '../ui/TextForm';
@@ -18,6 +22,7 @@ function CaseView({ code }: { code: Uint8Array }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [askingForMeeting, setAskingForMeeting] = useState(false);
+  const [replyAttachments, setReplyAttachments] = useState<DraftAttachment[]>([]);
   const { data, refetch } = useQuery({
     queryKey: [CASE_QUERY],
     queryFn: () => openCase(api, code),
@@ -29,9 +34,14 @@ function CaseView({ code }: { code: Uint8Array }) {
     return <p className="text-muted-foreground">{t.loading}</p>;
   }
 
-  const send = async (text: string, meetingRequest: boolean): Promise<string | undefined> => {
+  const send = async (
+    text: string,
+    meetingRequest: boolean,
+    attachments: DraftAttachment[] = [],
+  ): Promise<string | undefined> => {
     try {
-      await postMessage(api, code, text, data.messages.at(-1)!, meetingRequest);
+      const files = toAttachmentFiles(attachments, t.attachmentDefaultName);
+      await postMessage(api, code, text, data.messages.at(-1)!, meetingRequest, files);
       await refetch();
       return undefined;
     } catch {
@@ -72,6 +82,7 @@ function CaseView({ code }: { code: Uint8Array }) {
             {message.category ? ` · ${t.category[message.category]}` : ''}
           </p>
           <p className="wrap-anywhere whitespace-pre-wrap">{message.text}</p>
+          <AttachmentDownloads attachments={message.attachments} code={code} />
         </article>
       ))}
       <TextForm
@@ -79,8 +90,20 @@ function CaseView({ code }: { code: Uint8Array }) {
         submitLabel={t.send}
         multiline
         validate={(value) => (value.trim() ? undefined : t.writeRequired)}
-        onSubmit={(value) => send(value, false)}
-      />
+        onSubmit={async (value) => {
+          const error = await send(value, false, replyAttachments);
+          if (!error) {
+            setReplyAttachments([]);
+          }
+          return error;
+        }}
+      >
+        <AttachmentPicker
+          addLabel={t.attachmentAddShort}
+          attachments={replyAttachments}
+          onChange={setReplyAttachments}
+        />
+      </TextForm>
       {askingForMeeting ? (
         <section className="flex flex-col gap-3 rounded-lg border p-3">
           <h2 className="font-semibold">{t.meetingTitle}</h2>

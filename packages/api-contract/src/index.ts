@@ -2,7 +2,8 @@ import { oc } from '@orpc/contract';
 import type { ContractRouterClient } from '@orpc/contract';
 import { z } from 'zod';
 
-// docs/report-app.md, section API. Binary fields are base64url without padding.
+// docs/report-app.md, section API. Binary fields are base64url without padding,
+// except files, which go as multipart.
 // Nothing here is plaintext: the server sees only what these schemas carry.
 
 const bytes = z.base64url();
@@ -54,6 +55,21 @@ export const contract = {
     postMessage: oc
       .input(z.object({ lookupId, ciphertext: bytes, meetingRequest: z.boolean() }))
       .output(z.object({ id: z.string() })),
+  },
+  /**
+   * Opaque objects, crypto-design.md section 6. File ids, names, types and keys
+   * live only inside the encrypted report or message JSON.
+   *
+   * Upload comes first, then the report or message that references the ids. So
+   * `upload` must accept a `lookupId` with no case yet.
+   *
+   * The server must delete uploads that no report or message references after a
+   * while. Open: the ids are encrypted, so the server cannot see references. It
+   * can only tell that a `lookupId` still has no case.
+   */
+  file: {
+    upload: oc.input(z.object({ lookupId, ciphertext: z.file() })).output(z.object({ id: z.string() })),
+    download: oc.input(z.object({ lookupId, id: z.string() })).output(z.file()),
   },
 };
 

@@ -5,6 +5,7 @@ import type { OpenedCase, ReportApi, StoredMessage, Tenant } from '@whistledoor/
 /** In-memory stand-in for the private API, for `vite dev` and tests. */
 export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
   const cases = new Map<string, OpenedCase>();
+  const files = new Map<string, { lookupId: string; ciphertext: File }>();
   const tenantPk = generateKeyPair().then(async (pair) => (await getSodium()).to_base64(pair.publicKey));
   let nextId = 0;
 
@@ -46,6 +47,21 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
         const stored = store(ciphertext);
         find(lookupId).messages.push(stored);
         return { id: stored.id };
+      },
+    },
+    file: {
+      // No case check: files are uploaded before the report that references them.
+      upload: async ({ lookupId, ciphertext }) => {
+        const id = String(nextId++);
+        files.set(id, { lookupId, ciphertext });
+        return { id };
+      },
+      download: async ({ lookupId, id }) => {
+        const found = files.get(id);
+        if (found?.lookupId !== lookupId) {
+          throw new ORPCError('NOT_FOUND');
+        }
+        return found.ciphertext;
       },
     },
   };

@@ -40,7 +40,7 @@ Approved wireframes come before UI code, for every app.
 5. **Confirm last group:** on a mismatch nothing is sent. The code is confirmed before sending, so no one ends up with a sent report and a lost code.
 6. **Sent:** what happens next and by when.
 7. **Return with code:** the check character catches typos in the browser.
-8. **Case:** status, messages, reply, chain warnings, meeting request.
+8. **Case:** status, messages with their attachments, reply with attachments, chain warnings, meeting request.
 
 Error states: outdated poster (fingerprint mismatch, submit blocked), API unreachable (text stays in the form), unknown address.
 
@@ -70,9 +70,12 @@ Same origin, `https://<tenant>.melden.whistledoor.at/api/*`, under the no-log ru
 | Submit report | `lookupId`, `envelope`, `report` | timestamp |
 | Open case | `lookupId` | status, report, messages |
 | Post message | `lookupId`, ciphertext, meeting flag | message id |
-| Upload / download file | `lookupId`, ciphertext stream | object id / ciphertext stream |
+| Upload file | `lookupId`, ciphertext as a file | object id |
+| Download file | `lookupId`, object id | ciphertext as a file |
 
-Files go through the API, not to object storage directly, so no second origin appears in the CSP and no storage logs see reporter addresses.
+Files go through the API, not to object storage directly, so no second origin appears in the CSP and no storage logs see reporter addresses. oRPC sends them as multipart, with the same neutral name and type on every upload.
+
+Files are uploaded first, then the report or message that references their ids is sent, because the ids live inside the encrypted JSON. So an upload for a `lookupId` with no case yet is accepted, and the contract carries no file names, types or keys. The server must delete uploads that no report or message references after a while. Open: the ids are encrypted, so the server cannot see references, only that a `lookupId` still has no case. The 100 MiB per message has the same limit: only the browser can enforce it.
 
 When the channel is inactive, the report page stops taking new reports and points to BAK. Existing reporters can still open their case.
 
@@ -83,7 +86,7 @@ CI builds twice in a clean environment and fails if the output differs. Each Git
 ## Stages
 
 1. **Tracer bullet:** all screens without attachments, DE and EN, fake in-memory API, then the real API (`whistledoor-app#5`).
-2. **First paying customer:** attachments, whitelabel, fingerprint check.
+2. **First paying customer:** attachments (built against the fake API; the real API still has to implement `file.upload` and `file.download`), whitelabel, fingerprint check.
 3. **After launch:** iframe embed, tenant-edited categories, more languages.
 
 ### Iframe (stage 3)

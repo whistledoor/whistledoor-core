@@ -9,13 +9,14 @@ import { CATEGORIES } from '../case/categories';
 import type { Category } from '../case/categories';
 import { useSession } from '../case/session';
 import { useI18n } from '../i18n/i18n';
+import { AttachmentPicker } from '../ui/AttachmentPicker';
 import { FieldError } from '../ui/FieldError';
 import { Notice } from '../ui/Notice';
 import { Screen } from '../ui/Screen';
 
 export function Write() {
   const { t } = useI18n();
-  const { draft, updateDraft, code, setCode } = useSession();
+  const { draft, updateDraft, updateAttachments, code, setCode } = useSession();
   const navigate = useNavigate();
   const form = useForm({
     defaultValues: { category: draft.category, text: draft.text },
@@ -96,6 +97,7 @@ export function Write() {
             </div>
           )}
         </form.Field>
+        <AttachmentPicker addLabel={t.attachmentAdd} attachments={draft.attachments} onChange={updateAttachments} />
         <Notice>{t.writeWarning}</Notice>
         <Button type="submit">{t.next}</Button>
       </form>
