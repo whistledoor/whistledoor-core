@@ -29,6 +29,8 @@ Referrer-Policy: no-referrer
 
 The image (`apps/report/Dockerfile`) is Caddy serving `dist` on port 80. On top of the headers above it sends `X-Content-Type-Options: nosniff`. TLS and `/api` belong to the private deployment, whose proxy sees reporter addresses and needs the same no-log rule (D7).
 
+The API counts rate limits per client, so it must see the real address. `TRUST_PROXY` lists the proxy's addresses or CIDR ranges; without it every reporter counts as the proxy, and a list that includes `0.0.0.0/0` is refused because anyone could then forge the header.
+
 ## Languages
 
 German and English in one bundle. The tenant sets the default, the browser language applies if the tenant has none, and the reporter can switch.
