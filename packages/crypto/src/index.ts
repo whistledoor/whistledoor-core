@@ -30,6 +30,22 @@ export {
 export type { KeyPair } from './keys.js';
 export { decryptMessage, encryptMessage, openEnvelope, sealEnvelope, sealReport } from './report.js';
 export type { SealedReport } from './report.js';
+export {
+  FINGERPRINT_BYTES,
+  FingerprintError,
+  computeFingerprint,
+  fingerprintMatches,
+  formatFingerprint,
+  parseFingerprint,
+} from './fingerprint.js';
+export type { FingerprintErrorReason } from './fingerprint.js';
+export {
+  decryptNote,
+  encryptNote,
+  generateNotesKey,
+  openNotesEnvelope,
+  sealNotesEnvelope,
+} from './notes.js';
 export { MAX_FILE_BYTES, decryptFile, encryptFile, paddedLength } from './files.js';
 export type { EncryptedFile } from './files.js';
 export {

@@ -64,7 +64,7 @@ export async function decryptMessage(ciphertext: Uint8Array, caseKey: Uint8Array
   try {
     return sodium.crypto_secretbox_open_easy(body.subarray(nonceBytes), body.subarray(0, nonceBytes), caseKey);
   } catch {
-    throw new DecryptionError('Cannot decrypt the message: wrong case key or changed data');
+    throw new DecryptionError('Cannot decrypt the message: wrong key or changed data');
   }
 }
 
