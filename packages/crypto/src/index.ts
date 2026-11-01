@@ -34,6 +34,7 @@ export {
   FINGERPRINT_BYTES,
   FingerprintError,
   computeFingerprint,
+  fingerprintLastGroupMatches,
   fingerprintMatches,
   formatFingerprint,
   parseFingerprint,

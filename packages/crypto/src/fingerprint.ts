@@ -1,4 +1,4 @@
-import { CrockfordError, decodeCrockford, encodeCrockford } from './crockford.js';
+import { CrockfordError, decodeCrockford, encodeCrockford, normalizeCrockford } from './crockford.js';
 import { KEY_BYTES, assertLength } from './format.js';
 import { getSodium } from './sodium.js';
 
@@ -8,6 +8,7 @@ import { getSodium } from './sodium.js';
 export const FINGERPRINT_BYTES = 13;
 
 const FINGERPRINT_CHARS = 20;
+const LAST_GROUP_CHARS = 4;
 
 export type FingerprintErrorReason = 'length' | 'character';
 
@@ -67,6 +68,17 @@ export function fingerprintMatches(fingerprint: Uint8Array, input: string): bool
     throw error;
   }
   return parsed.every((byte, index) => byte === fingerprint[index]);
+}
+
+/**
+ * Compares the last group of a fingerprint with typed input, for the grant
+ * step: the new handler reads their fingerprint aloud and the granting handler
+ * types the last group. Only this exact group matches, read as
+ * `parseFingerprint` reads it.
+ */
+export function fingerprintLastGroupMatches(fingerprint: Uint8Array, input: string): boolean {
+  const lastGroup = formatFingerprint(fingerprint).replaceAll('-', '').slice(-LAST_GROUP_CHARS);
+  return normalizeCrockford(input) === lastGroup;
 }
 
 function assertFingerprintBytes(fingerprint: Uint8Array): void {

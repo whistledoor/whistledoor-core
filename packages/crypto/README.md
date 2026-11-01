@@ -9,7 +9,7 @@ It implements [`docs/crypto-design.md`](https://github.com/whistledoor/whistledo
 | Case code | §2 | `generateCaseCode`, `formatCaseCode`, `parseCaseCode` (with check character), `deriveCaseKeys` |
 | Handler password | §3 | `generatePasswordSalt`, `derivePasswordKeys`, `encodeAuthKey` |
 | Keys and grants | §4 | `generateKeyPair`, `wrapHandlerSecretKey`, `unwrapHandlerSecretKey`, `grantTenantKey`, `openTenantGrant`, `regrantTenantKey` |
-| Fingerprints | §4 | `computeFingerprint`, `formatFingerprint`, `parseFingerprint`, `fingerprintMatches` |
+| Fingerprints | §4 | `computeFingerprint`, `formatFingerprint`, `parseFingerprint`, `fingerprintMatches`, `fingerprintLastGroupMatches` |
 | Recovery key | §4 | `generateRecoveryKey`, `formatRecoveryKey`, `parseRecoveryKey`, `deriveRecoveryKeyPair` |
 | Report and messages | §5 | `sealReport`, `sealEnvelope`, `openEnvelope`, `encryptMessage`, `decryptMessage` |
 | Message chain | §5 | `createChainLink`, `parseChainLink`, `checkChain`, `messageHash` |

@@ -4,6 +4,7 @@ import {
   FINGERPRINT_BYTES,
   FingerprintError,
   computeFingerprint,
+  fingerprintLastGroupMatches,
   fingerprintMatches,
   formatFingerprint,
   parseFingerprint,
@@ -104,6 +105,27 @@ describe('parseFingerprint', () => {
       expect.objectContaining({ reason: 'character' }),
     );
     expect(() => parseFingerprint(`4CD0-XC75-QSAZ-52Q8-S45${char}`)).toThrow(FingerprintError);
+  });
+});
+
+describe('fingerprintLastGroupMatches', () => {
+  const fingerprint = fromHex(TENANT.bytes);
+  const lastGroup = TENANT.formatted.slice(-4);
+
+  it('accepts the last group with the same tolerance as a fingerprint', () => {
+    expect(fingerprintLastGroupMatches(fingerprint, lastGroup)).toBe(true);
+    expect(fingerprintLastGroupMatches(fingerprint, ` ${lastGroup.toLowerCase()}\n`)).toBe(true);
+  });
+
+  it('rejects anything else', () => {
+    expect(fingerprintLastGroupMatches(fingerprint, '')).toBe(false);
+    expect(fingerprintLastGroupMatches(fingerprint, lastGroup.slice(1))).toBe(false);
+    expect(fingerprintLastGroupMatches(fingerprint, TENANT.formatted)).toBe(false);
+    expect(fingerprintLastGroupMatches(fromHex(ALL_ZERO.bytes), lastGroup)).toBe(false);
+  });
+
+  it('rejects bytes that are not a fingerprint', () => {
+    expect(() => fingerprintLastGroupMatches(new Uint8Array(12), lastGroup)).toThrow(FingerprintError);
   });
 });
 
