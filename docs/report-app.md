@@ -46,7 +46,7 @@ Approved wireframes come before UI code, for every app.
 7. **Return with code:** the check character catches typos in the browser.
 8. **Case:** status, messages with their attachments, reply with attachments, chain warnings, meeting request.
 
-Error states: outdated poster (fingerprint mismatch, submit blocked), API unreachable (text stays in the form), unknown address.
+Error states: outdated poster (fingerprint mismatch, submit blocked, the case code still works), API unreachable (text stays in the form), unknown address.
 
 ## Report content
 
@@ -60,6 +60,23 @@ Inside the encrypted report JSON, so the server sees none of it:
 
 Logo, one primary colour, company name, and a short intro text in each language, all loaded from the API. The app adjusts the colour if contrast is too low. No custom CSS, custom fonts or custom domains: CSS could hide the security notices, fonts would be third-party requests, and a customer-controlled domain could be pointed elsewhere. A small "Bereitgestellt von Whistledoor" line stays.
 
+Every branding field is optional, and without branding the app shows its standard look and text.
+
+- **Logo:** must be a same-origin path, so the CSP stays at `img-src 'self' blob:`. Anything else is refused in the browser, as is a logo that fails to load, and the header shows the name alone.
+- **Colour:** `#rgb` or `#rrggbb`; anything else is ignored. The app sets `--primary` and `--primary-foreground` with `style.setProperty` on the root element, which `style-src 'self'` allows, unlike a `<style>` tag or a `style` attribute. It picks the text colour with the higher WCAG contrast from the two `--primary-foreground` tokens. If neither reaches 4.5:1, the colour is darkened in light mode and lightened in dark mode until one does. Dark mode also lightens it to 3:1 against the card, as the default `--primary` is lighter there.
+- **Intro:** plain text on the Start screen, in place of the standard text. A language without one keeps the standard text. The device notice, the handler names and the BAK link stay.
+
+The fields are plain strings in the contract, so a bad value is ignored instead of failing `tenant.get` and closing the channel. The private API should still validate them when a tenant saves them.
+
+## Poster check
+
+`#fp=<20 characters>` comes from the QR poster (`crypto-design.md` section 4). The app reads it once on load, compares it with the fetched `tenantPk`, and never sends it: browsers leave the fragment out of requests, and the app passes it to nothing.
+
+- **Match:** nothing to show.
+- **Mismatch:** the outdated-poster state replaces the Start screen and new reports are blocked, also on the submit step. "Ich habe einen Fallcode" stays, because reading and replying use the `caseKey`, not `tenantPk`. A short or empty `fp`, or a `tenantPk` that can't be read, counts as a mismatch.
+- **No `#fp`:** no check and no hint. Reporters who type the address have no check.
+- **Inactive channel:** its screen wins over the outdated-poster state, since neither takes reports and it names the BAK.
+
 ## Meeting request
 
 Reporters can ask for a meeting (HSchG § 13(5), within 14 calendar days). The request is a normal encrypted message plus a plaintext flag, so the server can track the deadline without reading content. The button says that meeting in person gives up anonymity.
@@ -70,7 +87,7 @@ Same origin, `https://<tenant>.melden.whistledoor.at/api/*`, under the no-log ru
 
 | Call | Sends | Returns |
 | --- | --- | --- |
-| Tenant info | nothing | name, `tenantPk`, branding, handler names, default language, whether the channel is active |
+| Tenant info | nothing | name, `tenantPk`, optional branding (`logoUrl`, `primaryColor`, `intro` per language), handler names, default language, whether the channel is active |
 | Submit report | `lookupId`, `envelope`, `report` | timestamp |
 | Open case | `lookupId` | status, report, messages |
 | Post message | `lookupId`, ciphertext, meeting flag | message id |
@@ -90,7 +107,7 @@ CI builds twice in a clean environment and fails if the output differs. Each Git
 ## Stages
 
 1. **Tracer bullet:** all screens without attachments, DE and EN, fake in-memory API, then the real API (`whistledoor-app#5`).
-2. **First paying customer:** attachments (built against the fake API; the real API still has to implement `file.upload` and `file.download`), whitelabel, fingerprint check.
+2. **First paying customer:** attachments, whitelabel and the fingerprint check, all built against the fake API. The real API still has to implement `file.upload`, `file.download` and `branding` in `tenant.get`, and serve the logo under a same-origin path.
 3. **After launch:** iframe embed, tenant-edited categories, more languages.
 
 ### Iframe (stage 3)

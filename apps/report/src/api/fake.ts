@@ -34,6 +34,15 @@ export function createFakeApi(tenant: Partial<Tenant> = {}): ReportApi {
       get: async () => ({
         name: 'Musterfirma GmbH',
         tenantPk: await tenantPk,
+        branding: {
+          // Served by `vite dev` from the source tree, so it stays out of the bundle.
+          logoUrl: '/src/api/fake-logo.svg',
+          primaryColor: '#0f766e',
+          intro: {
+            de: 'Bei der Musterfirma können Sie hier auf Missstände hinweisen, anonym und verschlüsselt.',
+            en: 'Use this channel to tell Musterfirma about wrongdoing, anonymously and encrypted.',
+          },
+        },
         handlers: ['Anna Berger', 'Peter Huber'],
         defaultLanguage: 'de',
         active: true,

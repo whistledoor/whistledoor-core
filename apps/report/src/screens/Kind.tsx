@@ -30,7 +30,7 @@ export function Kind() {
         {KINDS.map((kind) => (
           <Label
             key={kind}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal has-data-[state=checked]:border-primary"
+            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal has-data-[state=checked]:border-foreground"
           >
             <RadioGroupItem value={kind} className="mt-0.5" />
             <span>

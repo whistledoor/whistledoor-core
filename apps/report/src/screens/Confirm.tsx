@@ -15,7 +15,7 @@ export function Confirm() {
   const navigate = useNavigate();
 
   const { category } = draft;
-  if (!code || !tenant || !category) {
+  if (!code || !tenant || !category || tenant.posterOutdated) {
     return <Navigate to="/" />;
   }
 

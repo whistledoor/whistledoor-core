@@ -14,6 +14,9 @@ export const de = {
   inactive: 'Dieser Meldekanal ist nicht aktiv. Sie können sich an die',
   newReport: 'Neue Meldung',
   haveCode: 'Ich habe einen Fallcode',
+  posterTitle: 'Poster veraltet',
+  posterMismatch: 'Der QR-Code auf dem Poster passt nicht zu diesem Meldekanal. Absenden ist gesperrt.',
+  posterAdvice: 'Nutzen Sie das aktuelle Poster oder tippen Sie die Adresse ein.',
   stepOf: (step: number, total: number) => `Schritt ${step} von ${total}`,
   kindTitle: 'Wie möchten Sie melden?',
   kind: {

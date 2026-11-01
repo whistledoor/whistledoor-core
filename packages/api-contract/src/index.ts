@@ -18,9 +18,25 @@ export type CaseStatus = z.infer<typeof caseStatus>;
 export const language = z.enum(['de', 'en']);
 export type Language = z.infer<typeof language>;
 
+/**
+ * docs/report-app.md, section Whitelabel. Plain strings on purpose: the app
+ * ignores a value it can't use, and a bad logo or colour must not stop
+ * `tenant.get` from answering, because that would close the reporting channel.
+ */
+const branding = z.object({
+  /** A same-origin path such as `/api/logo`, so the CSP stays at `img-src 'self' blob:`. Anything else is not shown. */
+  logoUrl: z.string().optional(),
+  /** `#rgb` or `#rrggbb`. The app adjusts it if contrast is too low. */
+  primaryColor: z.string().optional(),
+  /** Short plain text per language. A language without one gets the standard text. */
+  intro: z.partialRecord(language, z.string()).optional(),
+});
+export type Branding = z.infer<typeof branding>;
+
 const tenant = z.object({
   name: z.string(),
   tenantPk: bytes,
+  branding: branding.optional(),
   handlers: z.array(z.string()),
   defaultLanguage: language.optional(),
   /** False for an expired trial or an unpaid account: no new reports, existing cases still open. */
