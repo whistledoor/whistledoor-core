@@ -31,6 +31,15 @@ jobs:
 
       - run: pnpm build
 
+      - name: Check the reporter build is reproducible
+        run: |
+          cd apps/report
+          find dist -type f -exec sha256sum {} + | sort -k2 > "$RUNNER_TEMP/first"
+          rm -rf dist
+          pnpm build
+          find dist -type f -exec sha256sum {} + | sort -k2 > "$RUNNER_TEMP/second"
+          diff "$RUNNER_TEMP/first" "$RUNNER_TEMP/second"
+
       - run: pnpm test:node
 
       # Headless tests only need Chromium's headless shell. Its shared libraries
