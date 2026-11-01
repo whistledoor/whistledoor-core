@@ -8,6 +8,8 @@
     "url": "git+https://github.com/whistledoor/whistledoor-core.git",
     "directory": "packages/api-contract"
   },
+  "homepage": "https://github.com/whistledoor/whistledoor-core/tree/main/packages/api-contract#readme",
+  "bugs": "https://github.com/whistledoor/whistledoor-core/issues",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -22,6 +24,10 @@
   ],
   "engines": {
     "node": ">=22.15"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

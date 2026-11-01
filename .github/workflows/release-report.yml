@@ -1,0 +1,99 @@
+name: Release report
+
+# Releases apps/report when a tag like `report-v0.1.0` is pushed. The tag must
+# match the app version and point at a commit on main.
+#
+# The bundle goes into a deterministic tarball whose SHA-256 is published with
+# the GitHub Release (D9). The image is built from that same dist and pushed to
+# ghcr.io. The release stays a draft until both are done, so nothing public ever
+# lacks its image digest.
+
+on:
+  push:
+    tags: ['report-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the GitHub Release
+      packages: write # push the image to ghcr.io
+    env:
+      IMAGE: ghcr.io/whistledoor/report
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check tag against version and main
+        run: |
+          version="$(node -p "require('./apps/report/package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "report-v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match app version ${version}"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "Tag ${GITHUB_REF_NAME} does not point at a commit on main"
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      # No dependency cache: a released bundle comes from a clean environment.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Take timestamps from the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "${GITHUB_SHA}")" >> "$GITHUB_ENV"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # Everything the tar header would take from this machine is fixed, and
+      # gzip -n leaves out its own name and timestamp, so the same dist always
+      # gives the same hash. An explicit bash adds pipefail, so a failing tar
+      # cannot pass as an empty archive.
+      - name: Pack dist
+        shell: bash
+        run: |
+          tarball="${RUNNER_TEMP}/report-${VERSION}.tgz"
+          LC_ALL=C tar --create --directory=apps/report/dist \
+            --format=gnu --sort=name --mtime="@${SOURCE_DATE_EPOCH}" \
+            --owner=0 --group=0 --numeric-owner --mode='u=rwX,go=rX' . \
+            | gzip -n -9 > "${tarball}"
+          sha256="$(sha256sum "${tarball}" | cut -d ' ' -f 1)"
+          printf 'SHA-256 of `report-%s.tgz`: `%s`\n' "${VERSION}" "${sha256}" > "${RUNNER_TEMP}/notes.md"
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${RUNNER_TEMP}/report-${VERSION}.tgz" \
+            --draft --verify-tag --title "${GITHUB_REF_NAME}" \
+            --notes-file "${RUNNER_TEMP}/notes.md"
+
+      - name: Build and push image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "${GH_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          docker build --tag "${IMAGE}:${VERSION}" apps/report
+          docker push "${IMAGE}:${VERSION}"
+
+      # The digest is read back from the registry, so the release names what
+      # ghcr.io holds. Hosts pin this, because a version tag can be moved.
+      - name: Add image digest and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          digest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{json .Manifest}}' | jq -er .digest)"
+          printf '\nImage: `%s@%s`\n' "${IMAGE}" "${digest}" >> "${RUNNER_TEMP}/notes.md"
+          gh release edit "${GITHUB_REF_NAME}" --draft=false --notes-file "${RUNNER_TEMP}/notes.md"
