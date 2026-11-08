@@ -1,6 +1,7 @@
 import { Outlet } from '@tanstack/react-router';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTenant } from '../api/useTenant';
+import { ThemeToggle } from '../theme/ThemeToggle';
 import { useI18n } from '../i18n/i18n';
 import { TenantLogo } from '../ui/TenantLogo';
 import type { Language } from '@whistledoor/api-contract';
@@ -21,18 +22,19 @@ export function Layout() {
             <p className="text-muted-foreground">{t.channel}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center">
           {LANGUAGES.map((option) => (
             <button
               key={option}
               type="button"
               aria-pressed={language === option}
-              className="cursor-pointer text-muted-foreground uppercase aria-pressed:font-semibold aria-pressed:text-foreground"
+              className="inline-flex size-11 cursor-pointer items-center justify-center text-muted-foreground uppercase aria-pressed:font-semibold aria-pressed:text-foreground"
               onClick={() => setLanguage(option)}
             >
               {option}
             </button>
           ))}
+          <ThemeToggle />
         </div>
       </header>
       <main className="flex-1">

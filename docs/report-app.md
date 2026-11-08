@@ -6,7 +6,7 @@ Status: decided 2026-11-01. Scope and rules for `apps/report`, the page reporter
 
 - Static single-page app: no third-party requests, no cookies, no analytics, strict CSP, reproducible build.
 - One bundle for all tenants. Everything tenant-specific comes from the API at runtime, so every tenant runs the same files.
-- The case code and `caseKey` live in memory only. A reload starts over, on purpose. Language is the only thing stored (`localStorage`).
+- The case code and `caseKey` live in memory only. A reload starts over, on purpose. Language and the light or dark choice are the only things stored (`localStorage`). `public/theme.js`, loaded in `<head>` under `script-src 'self'`, applies a saved theme before the first paint; without one the page follows the system.
 
 ## Stack
 
@@ -39,11 +39,11 @@ German and English in one bundle. The tenant sets the default, the browser langu
 
 Approved wireframes come before UI code, for every app.
 
-1. **Start:** tenant name, what the channel is for, device notice (D10), who reads reports, the external reporting office (BAK), fingerprint check.
+1. **Start:** tenant name, what the channel is for, what can be reported, how it works (four steps, 7 days and 3 months), how the reporter is protected, device notice (D10), who reads reports, the external reporting office (BAK), fingerprint check. The two buttons appear at the top and the bottom.
 2. **Kind:** anonymous or confidential, with optional name and phone.
 3. **Content:** category, description, attachments. Warning that details can identify the reporter.
 4. **Show case code:** copy, `.txt`, print. Shown once.
-5. **Confirm last group:** on a mismatch nothing is sent. The code is confirmed before sending, so no one ends up with a sent report and a lost code.
+5. **Confirm last group:** groups 1 to 4 are shown hidden and group 5 (five characters, the last being the check character) is typed, read like a case code (case, O/0, I/L/1). On a mismatch nothing is sent. The code is confirmed before sending, so no one ends up with a sent report and a lost code.
 6. **Sent:** what happens next and by when.
 7. **Return with code:** the check character catches typos in the browser.
 8. **Case:** status, messages with their attachments, reply with attachments, chain warnings, meeting request.

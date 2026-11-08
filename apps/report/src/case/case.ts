@@ -6,6 +6,7 @@ import {
   encryptMessage,
   formatCaseCode,
   getSodium,
+  normalizeCrockford,
   parseChainLink,
   sealReport,
 } from '@whistledoor/crypto';
@@ -103,8 +104,9 @@ export function lastGroup(code: Uint8Array): string {
   return formatCaseCode(code).split('-').at(-1)!;
 }
 
+/** Ignores case, spaces and dashes, and reads O as 0 and I or L as 1, like the case code itself. */
 export function matchesLastGroup(code: Uint8Array, input: string): boolean {
-  return input.trim().toUpperCase() === lastGroup(code);
+  return normalizeCrockford(input) === lastGroup(code);
 }
 
 export async function submitReport(

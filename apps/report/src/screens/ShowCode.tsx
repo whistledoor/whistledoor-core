@@ -31,9 +31,25 @@ export function ShowCode() {
         </>
       }
     >
-      <p className="rounded-lg bg-muted p-4 text-center font-mono text-sm font-medium whitespace-nowrap sm:text-lg" data-testid="case-code">
+      <p>{t.codeIntro}</p>
+      {/* One element with the whole code, for copying by hand and for tests. */}
+      <p className="sr-only" data-testid="case-code">
         {formatted}
       </p>
+      <ol className="grid grid-cols-5 gap-1.5" aria-hidden="true">
+        {formatted.split('-').map((group, index, groups) => (
+          <li key={index} className="flex flex-col items-center gap-1">
+            <span className="text-xs text-muted-foreground">{index + 1}</span>
+            <span
+              className={`w-full rounded-lg border py-2.5 text-center font-mono text-sm font-semibold sm:text-lg ${
+                index === groups.length - 1 ? 'border-2 border-foreground bg-muted' : 'border-input'
+              }`}
+            >
+              {group}
+            </span>
+          </li>
+        ))}
+      </ol>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 print:hidden">
         <Button
           variant="outline"
@@ -49,6 +65,7 @@ export function ShowCode() {
         </Button>
       </div>
       <Notice>{t.codeWarning}</Notice>
+      <p className="rounded-lg border p-3 text-sm print:hidden">{t.codeNextHint}</p>
       <Button className="print:hidden" onClick={() => void navigate({ to: '/confirm' })}>
         {t.codeDone}
       </Button>

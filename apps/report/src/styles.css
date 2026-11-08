@@ -26,8 +26,9 @@
   color-scheme: light dark;
 }
 
+/* Dark: the system's choice unless the page was set to light, or set to dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --background: oklch(0.17 0.01 255);
     --foreground: oklch(0.96 0.003 250);
     --card: oklch(0.21 0.012 255);
@@ -48,6 +49,49 @@
     --ring: oklch(0.65 0.08 245);
     --notice: oklch(0.3 0.05 75);
     --notice-foreground: oklch(0.88 0.09 85);
+  }
+}
+
+:root[data-theme='dark'] {
+  --background: oklch(0.17 0.01 255);
+  --foreground: oklch(0.96 0.003 250);
+  --card: oklch(0.21 0.012 255);
+  --card-foreground: oklch(0.96 0.003 250);
+  --popover: oklch(0.21 0.012 255);
+  --popover-foreground: oklch(0.96 0.003 250);
+  --primary: oklch(0.75 0.09 245);
+  --primary-foreground: oklch(0.2 0.03 255);
+  --secondary: oklch(0.27 0.012 255);
+  --secondary-foreground: oklch(0.96 0.003 250);
+  --muted: oklch(0.27 0.012 255);
+  --muted-foreground: oklch(0.72 0.012 255);
+  --accent: oklch(0.27 0.012 255);
+  --accent-foreground: oklch(0.96 0.003 250);
+  --destructive: oklch(0.7 0.17 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.65 0.08 245);
+  --notice: oklch(0.3 0.05 75);
+  --notice-foreground: oklch(0.88 0.09 85);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Tailwind's dark: variant follows the same rule as the tokens above. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
   }
 }
 
