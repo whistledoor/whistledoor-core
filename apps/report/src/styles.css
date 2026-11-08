@@ -1,78 +1,118 @@
 @import 'tailwindcss';
+@import './fonts.css';
 
+/*
+ * Tokens of the approved hi-fi design. Text pairs reach 4.5:1 in both schemes:
+ * muted on background 4.8, muted-on-tint 4.9, success 5.7, warn 7.0, link 8.7;
+ * dark muted on surface 8.8. --field is the border of text fields, which has to
+ * reach 3:1 (WCAG 1.4.11); --input is the lighter border of chips and buttons,
+ * whose label identifies them.
+ */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.21 0.02 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 255);
+  --radius: 0.75rem;
+  --background: #fafbfc;
+  --foreground: #1f2733;
+  --card: #ffffff;
+  --card-foreground: #1f2733;
+  --popover: #ffffff;
+  --popover-foreground: #1f2733;
   /* Whitelabel replaces --primary and --primary-foreground at runtime. */
-  --primary: oklch(0.38 0.08 245);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0.005 250);
-  --secondary-foreground: oklch(0.21 0.02 255);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 255);
-  --accent: oklch(0.96 0.005 250);
-  --accent-foreground: oklch(0.21 0.02 255);
-  --destructive: oklch(0.55 0.2 27);
-  --border: oklch(0.91 0.005 250);
-  --input: oklch(0.87 0.008 250);
-  --ring: oklch(0.55 0.08 245);
-  --notice: oklch(0.96 0.04 85);
-  --notice-foreground: oklch(0.4 0.08 70);
+  --primary: #2a5384;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f6;
+  --secondary-foreground: #1f2733;
+  --muted: #eef1f6;
+  --muted-foreground: #66707f;
+  --muted-on-tint: #5c6573;
+  --accent: #eef1f6;
+  --accent-foreground: #1f2733;
+  --destructive: #b42318;
+  --border: #e3e6eb;
+  --input: #d5dae1;
+  --field: #8a94a3;
+  --ring: #2a5384;
+  --link: #1d4690;
+  --tint: #e3ecfb;
+  --tint-foreground: #1d4690;
+  --info: #eef1f6;
+  --info-foreground: #33404f;
+  --success: #1e6b45;
+  --success-surface: #e7f3ec;
+  --notice: #fff7e6;
+  --notice-foreground: #7a4b00;
+  /* The case code card is dark in both schemes. */
+  --code: #17233a;
+  --code-foreground: #e9eef6;
+  --code-muted: #b7c3d6;
+  --code-accent: #a9c4f5;
   color-scheme: light dark;
 }
 
 /* Dark: the system's choice unless the page was set to light, or set to dark. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --background: oklch(0.17 0.01 255);
-    --foreground: oklch(0.96 0.003 250);
-    --card: oklch(0.21 0.012 255);
-    --card-foreground: oklch(0.96 0.003 250);
-    --popover: oklch(0.21 0.012 255);
-    --popover-foreground: oklch(0.96 0.003 250);
-    --primary: oklch(0.75 0.09 245);
-    --primary-foreground: oklch(0.2 0.03 255);
-    --secondary: oklch(0.27 0.012 255);
-    --secondary-foreground: oklch(0.96 0.003 250);
-    --muted: oklch(0.27 0.012 255);
-    --muted-foreground: oklch(0.72 0.012 255);
-    --accent: oklch(0.27 0.012 255);
-    --accent-foreground: oklch(0.96 0.003 250);
-    --destructive: oklch(0.7 0.17 25);
-    --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 18%);
-    --ring: oklch(0.65 0.08 245);
-    --notice: oklch(0.3 0.05 75);
-    --notice-foreground: oklch(0.88 0.09 85);
+    --background: #0f1828;
+    --foreground: #e9eef6;
+    --card: #17233a;
+    --card-foreground: #e9eef6;
+    --popover: #17233a;
+    --popover-foreground: #e9eef6;
+    --primary: #a9c4f5;
+    --primary-foreground: #0f1828;
+    --secondary: #17233a;
+    --secondary-foreground: #e9eef6;
+    --muted: #17233a;
+    --muted-foreground: #b7c3d6;
+    --muted-on-tint: #b7c3d6;
+    --accent: #26354f;
+    --accent-foreground: #e9eef6;
+    --destructive: #ff9b8f;
+    --border: #26354f;
+    --input: #3a4c6b;
+    --field: #7c89a0;
+    --ring: #a9c4f5;
+    --link: #a9c4f5;
+    --tint: #1d2d4a;
+    --tint-foreground: #a9c4f5;
+    --info: #17233a;
+    --info-foreground: #e9eef6;
+    --success: #8fe0b2;
+    --success-surface: #173a35;
+    --notice: #2e2614;
+    --notice-foreground: #f5c46b;
   }
 }
 
 :root[data-theme='dark'] {
-  --background: oklch(0.17 0.01 255);
-  --foreground: oklch(0.96 0.003 250);
-  --card: oklch(0.21 0.012 255);
-  --card-foreground: oklch(0.96 0.003 250);
-  --popover: oklch(0.21 0.012 255);
-  --popover-foreground: oklch(0.96 0.003 250);
-  --primary: oklch(0.75 0.09 245);
-  --primary-foreground: oklch(0.2 0.03 255);
-  --secondary: oklch(0.27 0.012 255);
-  --secondary-foreground: oklch(0.96 0.003 250);
-  --muted: oklch(0.27 0.012 255);
-  --muted-foreground: oklch(0.72 0.012 255);
-  --accent: oklch(0.27 0.012 255);
-  --accent-foreground: oklch(0.96 0.003 250);
-  --destructive: oklch(0.7 0.17 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.65 0.08 245);
-  --notice: oklch(0.3 0.05 75);
-  --notice-foreground: oklch(0.88 0.09 85);
+  --background: #0f1828;
+  --foreground: #e9eef6;
+  --card: #17233a;
+  --card-foreground: #e9eef6;
+  --popover: #17233a;
+  --popover-foreground: #e9eef6;
+  --primary: #a9c4f5;
+  --primary-foreground: #0f1828;
+  --secondary: #17233a;
+  --secondary-foreground: #e9eef6;
+  --muted: #17233a;
+  --muted-foreground: #b7c3d6;
+  --muted-on-tint: #b7c3d6;
+  --accent: #26354f;
+  --accent-foreground: #e9eef6;
+  --destructive: #ff9b8f;
+  --border: #26354f;
+  --input: #3a4c6b;
+  --field: #7c89a0;
+  --ring: #a9c4f5;
+  --link: #a9c4f5;
+  --tint: #1d2d4a;
+  --tint-foreground: #a9c4f5;
+  --info: #17233a;
+  --info-foreground: #e9eef6;
+  --success: #8fe0b2;
+  --success-surface: #173a35;
+  --notice: #2e2614;
+  --notice-foreground: #f5c46b;
 }
 
 :root[data-theme='light'] {
@@ -96,12 +136,14 @@
 }
 
 @theme inline {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 8px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -114,14 +156,27 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-muted-on-tint: var(--muted-on-tint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-field: var(--field);
   --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-tint: var(--tint);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
   --color-notice: var(--notice);
   --color-notice-foreground: var(--notice-foreground);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-muted: var(--code-muted);
+  --color-code-accent: var(--code-accent);
 }
 
 @layer base {
@@ -130,6 +185,39 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans text-[15px] leading-normal antialiased;
+  }
+
+  a {
+    @apply text-link;
+  }
+
+  /* One visible focus ring for every control (WCAG 2.4.7), 3:1 against the page. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  summary {
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  dialog::backdrop {
+    background: rgb(15 24 40 / 55%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

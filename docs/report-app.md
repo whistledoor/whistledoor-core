@@ -10,7 +10,7 @@ Status: decided 2026-11-01. Scope and rules for `apps/report`, the page reporter
 
 ## Stack
 
-React, Vite, TanStack Router, Query and Form, as for the other apps. UI components are shadcn/ui on Tailwind: the code lives in this repo under `src/components/ui`, the CSS is built into one static file, and colours are CSS variables, which is what whitelabel changes. Native `<select>` instead of Radix Select, which injects a `<style>` tag the CSP blocks. System fonts only.
+React, Vite, TanStack Router, Query and Form, as for the other apps. UI components are shadcn/ui on Tailwind: the code lives in this repo under `src/components/ui`, the CSS is built into one static file, and colours are CSS variables, which is what whitelabel changes. Choices such as the category are native radio inputs in a `<fieldset>`; Radix Select is avoided because it injects a `<style>` tag the CSP blocks. Fonts are Space Grotesk and JetBrains Mono, self-hosted as woff2 under `src/fonts` with their OFL licences in `public/fonts`; nothing is loaded from a font service.
 
 - Routing uses memory history, so the URL stays `/` and a reload returns to the start. `#fp=<fingerprint>` belongs to the poster check and is read once on load.
 - libsodium runs as WebAssembly, which needs `'wasm-unsafe-eval'` in `script-src`.
@@ -18,7 +18,7 @@ React, Vite, TanStack Router, Query and Form, as for the other apps. UI componen
 Headers set by the host:
 
 ```
-Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self';
+Content-Security-Policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self';
   img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 Referrer-Policy: no-referrer
 ```

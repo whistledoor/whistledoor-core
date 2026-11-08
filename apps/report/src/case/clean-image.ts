@@ -1,5 +1,6 @@
 import { isCleanable } from './attachments';
 import type { NewAttachment } from './attachments';
+import { stripMetadata } from './strip-metadata';
 
 const JPEG_QUALITY = 0.92;
 
@@ -24,7 +25,8 @@ async function reencode(file: File): Promise<Blob> {
 }
 
 /**
- * Reads a picked file. JPEG, PNG and WebP go through a canvas, which drops EXIF.
+ * Reads a picked file. JPEG, PNG and WebP go through a canvas, which drops EXIF,
+ * and JPEG and PNG then lose any metadata segment the encoder still wrote.
  * Rejects if an image cannot be decoded: it must not be sent uncleaned.
  */
 export async function readAttachment(file: File): Promise<NewAttachment> {
@@ -33,5 +35,5 @@ export async function readAttachment(file: File): Promise<NewAttachment> {
   }
   const blob = await reencode(file);
   // Not file.type: a browser that can't encode WebP returns PNG instead.
-  return { type: blob.type, data: new Uint8Array(await blob.arrayBuffer()), cleaned: true };
+  return { type: blob.type, data: stripMetadata(blob.type, new Uint8Array(await blob.arrayBuffer())), cleaned: true };
 }

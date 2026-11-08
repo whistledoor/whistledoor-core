@@ -31,7 +31,11 @@ function CaseView({ code }: { code: Uint8Array }) {
   });
 
   if (!data) {
-    return <p className="text-muted-foreground">{t.loading}</p>;
+    return (
+      <Screen title={t.caseTitle}>
+        <p className="text-muted-foreground">{t.loading}</p>
+      </Screen>
+    );
   }
 
   const send = async (
@@ -57,7 +61,7 @@ function CaseView({ code }: { code: Uint8Array }) {
           <span>{t.status[data.status]}</span>
           <button
             type="button"
-            className="cursor-pointer underline"
+            className="min-h-11 cursor-pointer underline"
             onClick={() => {
               queryClient.removeQueries({ queryKey: [CASE_QUERY] });
               reset();
@@ -73,9 +77,9 @@ function CaseView({ code }: { code: Uint8Array }) {
       {data.messages.map((message) => (
         <article
           key={message.id}
-          className={`rounded-lg border p-3 ${message.role === 'reporter' ? 'ml-6 bg-muted' : 'mr-6'}`}
+          className={`rounded-2xl border p-4 ${message.role === 'reporter' ? 'ml-6 bg-tint' : 'mr-6 bg-background'}`}
         >
-          <p className="mb-1 text-xs text-muted-foreground">
+          <p className="mb-1 text-xs text-muted-on-tint">
             {message.role === 'reporter' ? t.roleReporter : t.roleHandler}
             {' · '}
             {new Date(message.createdAt).toLocaleDateString(language)}
@@ -105,7 +109,7 @@ function CaseView({ code }: { code: Uint8Array }) {
         />
       </TextForm>
       {askingForMeeting ? (
-        <section className="flex flex-col gap-3 rounded-lg border p-3">
+        <section className="flex flex-col gap-3 rounded-2xl border p-4">
           <h2 className="font-semibold">{t.meetingTitle}</h2>
           <Notice>{t.meetingNotice}</Notice>
           <p>{t.meetingDetails}</p>
