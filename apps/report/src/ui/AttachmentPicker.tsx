@@ -29,6 +29,7 @@ function AttachmentRow({ name, onRename, onRemove }: AttachmentRowProps) {
     <li className="flex items-center justify-between gap-2">
       {renaming ? (
         <Input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves to the field the reporter just asked to rename
           autoFocus
           autoComplete="off"
           aria-label={t.attachmentNameLabel}
