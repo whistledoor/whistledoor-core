@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client';
 import { Link } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTenant } from '../api/useTenant';
 import { useI18n } from '../i18n/i18n';
@@ -50,18 +51,8 @@ export function Start() {
     );
   }
 
-  return (
-    <Screen>
-      <Notice>{t.deviceNotice}</Notice>
-      <p>{tenant.branding?.intro?.[language]?.trim() || t.intro}</p>
-      <div className="text-sm text-muted-foreground">
-        <p>
-          {t.readers} {tenant.handlers.join(', ')}
-        </p>
-        <p>
-          {tenant.active ? t.externalOffice : t.inactive} <ExternalOffice />.
-        </p>
-      </div>
+  const actions = (
+    <div className="flex flex-col gap-2">
       {tenant.active ? (
         <Button asChild>
           <Link to="/kind">{t.newReport}</Link>
@@ -70,6 +61,70 @@ export function Start() {
       <Button variant="outline" asChild>
         <Link to="/return">{t.haveCode}</Link>
       </Button>
+    </div>
+  );
+
+  return (
+    <Screen title={t.startTitle}>
+      <p>{tenant.branding?.intro?.[language]?.trim() || t.intro}</p>
+      {tenant.active ? null : (
+        <Notice>
+          {t.inactive} <ExternalOffice />.
+        </Notice>
+      )}
+      {actions}
+      <Notice>{t.deviceNotice}</Notice>
+      <Section title={t.whatTitle}>
+        <p>{t.whatIntro}</p>
+        <ul className="flex list-disc flex-col gap-1 pl-5">
+          {t.whatItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <p className="text-sm text-muted-foreground">{t.whatNote}</p>
+      </Section>
+      <Section title={t.howTitle}>
+        <ol className="flex flex-col gap-2">
+          {t.howSteps.map((step, index) => (
+            <li key={step.title} className="flex items-start gap-3">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                {index + 1}
+              </span>
+              <span>
+                <strong className="font-semibold">{step.title}</strong> {step.text}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="text-sm text-muted-foreground">{t.sentNext}</p>
+      </Section>
+      <Section title={t.safeTitle}>
+        <ul className="flex list-disc flex-col gap-1 pl-5">
+          {t.safeItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </Section>
+      <Section title={t.readersTitle}>
+        <p>
+          {t.readers} <span className="font-medium">{tenant.handlers.join(', ')}</span>
+        </p>
+        {tenant.active ? (
+          <p className="text-sm text-muted-foreground">
+            {t.externalOffice} <ExternalOffice />.
+          </p>
+        ) : null}
+      </Section>
+      {actions}
     </Screen>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2 border-t pt-4">
+      <h2 className="text-base font-semibold">{title}</h2>
+      {children}
+    </section>
   );
 }

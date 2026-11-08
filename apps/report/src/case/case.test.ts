@@ -81,5 +81,7 @@ describe('case', () => {
     expect(lastGroup(code)).toHaveLength(5);
     expect(matchesLastGroup(code, ` ${lastGroup(code).toLowerCase()} `)).toBe(true);
     expect(matchesLastGroup(code, '00000!')).toBe(false);
+    const confusable = lastGroup(code).replace(/0/g, 'o').replace(/1/g, 'l');
+    expect(matchesLastGroup(code, confusable)).toBe(true);
   });
 });

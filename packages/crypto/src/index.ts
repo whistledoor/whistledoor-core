@@ -1,4 +1,5 @@
 export { getSodium } from './sodium.js';
+export { normalizeCrockford } from './crockford.js';
 export {
   CASE_CODE_BYTES,
   CaseCodeError,

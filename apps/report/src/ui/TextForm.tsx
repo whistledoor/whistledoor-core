@@ -18,6 +18,9 @@ interface TextFormProps {
   onSubmit: (value: string) => Promise<string | undefined> | string | undefined;
   /** Shown between the field and the submit button. */
   children?: ReactNode;
+  /** Shown in one row before a short, centred field: the hidden groups of a code. */
+  leading?: ReactNode;
+  maxLength?: number;
 }
 
 /** One-field forms: case code, last group, reply. */
@@ -29,6 +32,8 @@ export function TextForm({
   validate,
   onSubmit,
   children,
+  leading,
+  maxLength,
 }: TextFormProps) {
   const [submitError, setSubmitError] = useState<string>();
   const form = useForm({
@@ -56,7 +61,10 @@ export function TextForm({
           const props = {
             id: field.name,
             value: field.state.value,
-            className: mono ? 'font-mono' : undefined,
+            className: [mono ? 'font-mono' : '', leading ? 'h-11 px-1 text-center tracking-wide uppercase' : '']
+              .filter(Boolean)
+              .join(' ') || undefined,
+            maxLength,
             autoComplete: 'off',
             spellCheck: !mono,
             'aria-invalid': error ? true : undefined,
@@ -69,7 +77,16 @@ export function TextForm({
           return (
             <>
               <Label htmlFor={field.name}>{label}</Label>
-              {multiline ? <Textarea rows={4} {...props} /> : <Input {...props} />}
+              {multiline ? (
+                <Textarea rows={4} {...props} />
+              ) : leading ? (
+                <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.5fr)] items-end gap-1.5">
+                  {leading}
+                  <Input {...props} />
+                </div>
+              ) : (
+                <Input {...props} />
+              )}
               <FieldError error={error} />
             </>
           );
