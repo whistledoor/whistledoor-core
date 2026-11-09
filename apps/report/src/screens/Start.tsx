@@ -249,9 +249,10 @@ function DesktopStart({ tenant, intro }: { tenant: CheckedTenant; intro: string 
           ))}
         </ul>
         <p className="mt-2.5 text-sm text-muted-foreground">{t.deviceNoticeShort}</p>
+        <div aria-hidden="true" className="min-h-14 flex-1" />
         <section
           aria-labelledby="how-desktop"
-          className="mt-auto grid w-full max-w-[1040px] grid-cols-[200px_repeat(4,minmax(0,1fr))] gap-7 border-t pt-10 pb-9"
+          className="grid w-full max-w-[1040px] grid-cols-[200px_repeat(4,minmax(0,1fr))] gap-7 border-t pt-10 pb-9"
         >
           <h2 id="how-desktop" className="text-base font-semibold">
             {t.howTitle}

@@ -42,8 +42,9 @@ export function Confirm() {
         return;
       }
       markSent();
-      clearDraft();
+      // Leave first: with the draft cleared, this screen would redirect to the start.
       await navigate({ to: '/sent' });
+      clearDraft();
     },
   });
 
