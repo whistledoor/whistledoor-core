@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Callout } from './Callout';
 
-export function Notice({ children }: { children: ReactNode }) {
+/** A warning. `alert` announces it, for errors that appear after an action. */
+export function Notice({ children, alert = false }: { children: ReactNode; alert?: boolean }) {
   return (
-    <Alert className="border-transparent bg-notice text-notice-foreground">
-      <AlertDescription className="text-notice-foreground">{children}</AlertDescription>
-    </Alert>
+    <Callout tone="warn" alert={alert}>
+      {children}
+    </Callout>
   );
 }

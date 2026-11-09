@@ -1,12 +1,12 @@
 import { Link } from '@tanstack/react-router';
+import { ArrowRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSession } from '../case/session';
 import type { ReportKind } from '../case/categories';
 import { useI18n } from '../i18n/i18n';
-import { Screen } from '../ui/Screen';
+import { FlowShell } from '../ui/FlowShell';
 
 const KINDS: readonly ReportKind[] = ['anonymous', 'confidential'];
 
@@ -15,33 +15,40 @@ export function Kind() {
   const { draft, updateDraft } = useSession();
 
   return (
-    <Screen
+    <FlowShell
+      step={1}
       title={t.kindTitle}
-      meta={
-        <>
-          <Link className="underline" to="/">
-            {t.back}
-          </Link>{' '}
-          · {t.stepOf(1, 4)}
-        </>
+      action={
+        <Button size="cta" asChild>
+          <Link to="/write" className="text-primary-foreground no-underline">
+            {t.next}
+            <ArrowRightIcon aria-hidden="true" className="hidden lg:block" />
+          </Link>
+        </Button>
       }
     >
-      <RadioGroup value={draft.kind} onValueChange={(kind) => updateDraft({ kind: kind as ReportKind })}>
+      <fieldset className="flex max-w-2xl flex-col gap-2.5">
+        <legend className="sr-only">{t.kindTitle}</legend>
         {KINDS.map((kind) => (
-          <Label
+          <label
             key={kind}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal has-data-[state=checked]:border-foreground"
+            className="grid cursor-pointer grid-cols-[auto_1fr] items-start gap-x-3 rounded-2xl border border-input bg-card p-4 has-checked:border-primary has-checked:bg-tint has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
           >
-            <RadioGroupItem value={kind} className="mt-0.5" />
-            <span>
-              <span className="block font-medium">{t.kind[kind]}</span>
-              <span className="block text-sm text-muted-foreground">{t.kindHint[kind]}</span>
-            </span>
-          </Label>
+            <input
+              type="radio"
+              name="kind"
+              value={kind}
+              checked={draft.kind === kind}
+              className="row-span-2 mt-1 size-5 shrink-0 accent-primary focus-visible:outline-none"
+              onChange={() => updateDraft({ kind })}
+            />
+            <span className="font-semibold">{t.kind[kind]}</span>
+            <span className="text-sm text-muted-on-tint">{t.kindHint[kind]}</span>
+          </label>
         ))}
-      </RadioGroup>
+      </fieldset>
       {draft.kind === 'confidential' ? (
-        <>
+        <div className="flex max-w-2xl flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="name">{t.name}</Label>
             <Input
@@ -61,11 +68,8 @@ export function Kind() {
               onChange={(event) => updateDraft({ phone: event.target.value })}
             />
           </div>
-        </>
+        </div>
       ) : null}
-      <Button asChild>
-        <Link to="/write">{t.next}</Link>
-      </Button>
-    </Screen>
+    </FlowShell>
   );
 }

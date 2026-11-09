@@ -13,6 +13,10 @@ interface Session {
   clearDraft: () => void;
   code: Uint8Array | null;
   setCode: (code: Uint8Array | null) => void;
+  /** When the report was sent, for the deadlines on the Sent screen. */
+  sentAt: Date | null;
+  markSent: () => void;
+  /** Forgets everything: draft, attachments, code. Zeroes what it can first. */
   reset: () => void;
 }
 
@@ -21,6 +25,7 @@ const SessionContext = createContext<Session | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [code, setCode] = useState<Uint8Array | null>(null);
+  const [sentAt, setSentAt] = useState<Date | null>(null);
 
   const value = useMemo<Session>(
     () => ({
@@ -31,13 +36,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       clearDraft: () => setDraft(EMPTY_DRAFT),
       code,
       setCode,
+      sentAt,
+      markSent: () => setSentAt(new Date()),
       reset: () => {
         code?.fill(0);
+        for (const attachment of draft.attachments) {
+          attachment.data.fill(0);
+        }
         setDraft(EMPTY_DRAFT);
         setCode(null);
+        setSentAt(null);
       },
     }),
-    [draft, code],
+    [draft, code, sentAt],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -11,6 +11,7 @@ const CSP = [
   "default-src 'none'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self'",
+  "font-src 'self'",
   "img-src 'self' blob:",
   "connect-src 'self'",
   "base-uri 'none'",

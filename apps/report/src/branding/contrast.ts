@@ -20,12 +20,12 @@ const MIN_TEXT_CONTRAST = 4.5;
 /** WCAG AA for interface parts: buttons and the selected radio on a dark card. */
 const MIN_SURFACE_CONTRAST = 3;
 
-// The --primary-foreground tokens of styles.css as sRGB, kept in step by hand. They
-// are not pure black and white, so a mid grey can fall short with both.
-const LIGHT_TEXT: Rgb = [0xf8, 0xf8, 0xf8];
-const DARK_TEXT: Rgb = [0x0c, 0x17, 0x23];
+// The --primary-foreground tokens of styles.css as sRGB, kept in step by hand. The
+// dark one is not black, so a mid grey can fall short with both.
+const LIGHT_TEXT: Rgb = [0xff, 0xff, 0xff];
+const DARK_TEXT: Rgb = [0x0f, 0x18, 0x28];
 /** --card in dark mode. The page background is darker, so this is the harder case. */
-const DARK_CARD: Rgb = [0x15, 0x19, 0x1e];
+const DARK_CARD: Rgb = [0x17, 0x23, 0x3a];
 
 const BLACK: Rgb = [0, 0, 0];
 const WHITE: Rgb = [255, 255, 255];

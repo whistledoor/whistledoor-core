@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio, createPrimaryTheme, parseHexColor } from './contrast';
 import type { PrimaryColors } from './contrast';
 
-const LIGHT_TEXT = '#f8f8f8';
-const DARK_TEXT = '#0c1723';
-const DARK_CARD = '#15191e';
+const LIGHT_TEXT = '#ffffff';
+const DARK_TEXT = '#0f1828';
+const DARK_CARD = '#17233a';
 
 function ratio(first: string, second: string): number {
   return contrastRatio(parseHexColor(first)!, parseHexColor(second)!);
