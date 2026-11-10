@@ -1,6 +1,6 @@
 # Crypto design
 
-Status: draft, 2026-10-26. Implements the decisions in the private `whistledoor-app/docs/PLAN.md` and issue #2, against the actors in [threat-model.md](threat-model.md). `packages/crypto` must match this document; a change here comes first, code second.
+Status: draft, 2026-10-26, last changed 2026-11-10. Implements the decisions in the private `whistledoor-app/docs/PLAN.md` and issue #2, against the actors in [threat-model.md](threat-model.md). `packages/crypto` must match this document; a change here comes first, code second.
 
 Items marked **(proposed)** go beyond the settled decisions and need sign-off in review. Items marked **open** are not decided.
 
@@ -74,6 +74,14 @@ kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
   - The final defaults (open item 2) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
 - `master` is wiped with `memzero` right after the two subkeys are derived.
 - Changing the password: derive new `authKey` and `kek`, re-wrap the handler's private key, update both on the server in one request. The key pair stays the same.
+- **Forgot password.** Decided 2026-11-10. Without the old password there is no `kek`, so `wrappedHandlerSk` cannot be opened by anyone. A reset therefore ends in a new key pair, never in the old one:
+  1. The handler asks for a link on the login page. The server answers the same for every email and mails a link only to a known one: `https://app…/passwort#<token>`, 256 random bits, one use, valid 1 hour. The server stores only a hash of the token. The token sits in the fragment so it never lands in access logs or a `Referer`.
+  2. The link alone is not enough: the handler passes their second factor (passkey or TOTP) first. A mailbox someone else can read must not be a way in, even to an account without keys. An account whose factor a colleague has just reset (section 4, lost second factor) has none to pass and enrols a new one right after, as at the next login today.
+     A handler who lost factor and password and has no colleague to reset the factor proves the recovery key instead (section 4, recovery proof), then enrols a new factor after step 4.
+  3. The browser picks the new password and makes everything new: `salt`, `authKey`, `kek` (section 3), `crypto_box_keypair` for a new handler key pair, and `wrappedHandlerSk` under the new `kek`.
+  4. One request replaces credential, salt, parameters, `handlerPk` and `wrappedHandlerSk`, and **deletes every grant** of the handler, in every tenant: they are sealed to the old `handlerPk` and nobody can open them any more. The same transaction ends every session of the account, deletes open recovery challenges, writes `password.reset` into the audit log of every tenant of the handler, and uses up the token. A notice goes to the address afterwards, without a link.
+  5. The handler is now a member without a grant, exactly like an invited one who is waiting: their app shows their new fingerprint, and another handler restores access with the fingerprint check (section 4, grant). Or the handler uses the recovery key (section 4, restore with the recovery key).
+- Nothing in a reset lets the server or support give back access: the server only ever learns the new public key, and a grant still needs someone holding `tenantSk`. With no other handler and no recovery key, the cases are lost, which the reset page says before step 4.
 
 ## 4. Keys: handlers, tenants, recovery
 
@@ -92,7 +100,9 @@ grant(handler) = 0x01 || crypto_box_seal(tenantSk, handlerPk)
 ```
 - **Unlock:** password → `kek` → open `wrappedHandlerSk` → `handlerSk` → `crypto_box_seal_open(grant)` → `tenantSk`.
 - **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `0x01 || crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first). The grant is only uploaded after the fingerprint check below.
-- **Remove:** delete that handler's grant, then rotate the tenant key (below).
+- **Remove:** delete that handler's membership with its grant and end every session of the account, in one request. Decided 2026-11-10: until rotation is built (below, after launch), removal does only this. The removing handler's app says that the removed person keeps what they have already seen, and the customer docs say so too.
+  - Any member with a grant may remove another member; nobody can remove themself, so at least one member with a grant always stays. With roles this moves to Firmen-Admin.
+  - A removed handler keeps their account and their other tenants. Their key pair stays: it never held more than grants, and the grant for this tenant is gone.
 
 **Fingerprints.** Decided 2026-10-27. A compromised server could hand an unlocked handler its own public key instead of the new handler's and receive `tenantSk`, or serve reporters a fake `tenantPk`. Public keys are therefore checked by fingerprint:
 ```
@@ -103,7 +113,7 @@ shown like a case code (section 2) but without the check character: 20 Crockford
 - **Recovery key:** no check needed; `recoveryPk` is derived in the same browser that holds the key.
 - **Reporters:** the QR poster links to `https://<tenant>.melden.whistledoor.at/#fp=<20 characters>`. Browsers never send the fragment to the server. The reporter app compares it with the fetched `tenantPk` and refuses to submit on a mismatch. This turns key substitution into code substitution, which the published bundle hash makes detectable (threat model D9). Reporters who type the address by hand get no check.
 
-**Tenant key rotation.** Decided 2026-10-27. A removed handler keeps whatever they have already seen: `tenantSk` and every `caseKey` they could open. Rotation cannot undo that. It protects reports filed after the removal, in case the removed handler later obtains ciphertext (a database leak, or someone helping them).
+**Tenant key rotation.** Decided 2026-10-27; built after launch. Until then removal is the simple form above. A removed handler keeps whatever they have already seen: `tenantSk` and every `caseKey` they could open. Rotation cannot undo that. It protects reports filed after the removal, in case the removed handler later obtains ciphertext (a database leak, or someone helping them).
 - Offered on every removal, on by default, and mandatory when the removal reason is "conflict".
 - Done by the removing handler's browser, in one request: new tenant key pair; for every case, open `envelope` with the old `tenantSk` and seal `caseKey` to the new `tenantPk`, and do the same for `notesEnvelope` and `notesKey` (section 5); new grants for every remaining handler; a new recovery grant, which needs only `recoveryPk`, not the recovery key. No report content is re-encrypted.
 - The tenant fingerprint changes, so old posters stop working. The handler app says so and offers new posters. On a mismatch the reporter page says the poster is out of date and points to the current one or to typing the address.
@@ -119,7 +129,22 @@ grant(recovery) = 0x01 || crypto_box_seal(tenantSk, recoveryPk)
 - Shown once, confirmed by re-typing the last group, then offered as print / .txt. The server stores `recoveryPk` and the grant, never the key.
 - Using it: enter the recovery key → `tenantSk` → grant to a (new) handler key pair → done.
 
-**Recovery proof.** Decided 2026-11-01. A handler who lost their second factor and has nobody to reset it proves they hold the recovery key. The key never leaves the browser, and the recovery key pair has no signing key, so the proof is opening something sealed to `recoveryPk`:
+**Restore with the recovery key.** Decided 2026-11-10. A signed-in handler without a grant in a tenant (after a password reset, section 3) grants themself from the recovery key:
+```
+client:  recoveryKeyPair  = derived from the typed key (above)
+         proof            = recovery proof (below), one fresh challenge
+         tenantSk         = crypto_box_seal_open(grant(recovery), recoveryKeyPair)
+         check            = crypto_box_seal_open(crypto_box_seal(random(32), tenantPk), (tenantPk, tenantSk))
+         grant(self)      = 0x01 || crypto_box_seal(tenantSk, ownHandlerPk)
+server:  checks proof as below, then stores grant(self) only onto the handler's own row without a grant
+```
+- No fingerprint check: `ownHandlerPk` comes from the same browser that made the key pair at the reset, not from the server.
+- The `check` line makes sure the recovery grant really holds the key that reporters encrypt to, before anything is uploaded. A server could otherwise hand out a recovery grant for a key of its own; the handler would then read nothing, but would not know why. The test uses only `crypto_box_seal` and `crypto_box_seal_open`.
+- The server cannot tell a correct `grant(self)` from garbage; it does not need to. The proof shows the caller holds the recovery key, which is full access to `tenantSk` anyway, and a wrong grant hurts only its own holder.
+- Audited as `recovery.used` and `member.granted` with the handler as actor and target. The app then offers a new recovery key, since the old one was typed into a browser; replacing it is not required.
+
+**Recovery proof.** Decided 2026-11-01. A handler who lost their second factor proves they hold the recovery key.
+- No colleague gate (changed 2026-11-10). The proof used to be offered only when no other member with a grant shared a tenant with the handler. A colleague who has left but was never removed then blocked the recovery key while being unable to help. The recovery key gives full access to `tenantSk` anyway, so asking a colleague first adds no protection. The app still suggests the colleague first and offers the key as the other way. The key never leaves the browser, and the recovery key pair has no signing key, so the proof is opening something sealed to `recoveryPk`:
 ```
 server:  challenge = randombytes_buf(32)
          sealed    = 0x01 || crypto_box_seal(challenge, recoveryPk)     // sent to the client
@@ -203,6 +228,7 @@ Decided: unlocked keys live in memory only; auto-lock after 15 minutes idle.
 | Handler | email, `salt`, Argon2id params, hash of `authKey`, `handlerPk`, `wrappedHandlerSk`, TOTP secret |
 | Tenant | `tenantPk`, one grant per handler, recovery `recoveryPk` and grant |
 | Recovery proof | hash of the open challenge, for 5 minutes |
+| Password reset | hash of the link token, for 1 hour, one use |
 | Audit log | action, acting handler, case and file ids, time; 8 years, append-only, no IP |
 | Case | hash of `lookupId`, `envelope`, `report`, `notesEnvelope`, timestamps, status |
 | Message / file / note | ciphertext, size, timestamps, sender role |
