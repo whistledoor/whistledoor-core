@@ -74,7 +74,7 @@ kek     = crypto_kdf_derive_from_key(32, 2, "WDpass01", master)
   - The final defaults (open item 2) must stay at or above the floor. The floor can only be raised once every stored handler's parameters are above the new value, otherwise those handlers cannot log in.
 - `master` is wiped with `memzero` right after the two subkeys are derived.
 - Changing the password: derive new `authKey` and `kek`, re-wrap the handler's private key, update both on the server in one request. The key pair stays the same.
-- **Forgot password.** Decided 2026-11-10 (**proposed** until review). Without the old password there is no `kek`, so `wrappedHandlerSk` cannot be opened by anyone. A reset therefore ends in a new key pair, never in the old one:
+- **Forgot password.** Decided 2026-11-10. Without the old password there is no `kek`, so `wrappedHandlerSk` cannot be opened by anyone. A reset therefore ends in a new key pair, never in the old one:
   1. The handler asks for a link on the login page. The server answers the same for every email and mails a link only to a known one: `https://app…/passwort#<token>`, 256 random bits, one use, valid 1 hour. The server stores only a hash of the token. The token sits in the fragment so it never lands in access logs or a `Referer`.
   2. The link alone is not enough: the handler passes their second factor (passkey or TOTP) first. A mailbox someone else can read must not be a way in, even to an account without keys. An account whose factor a colleague has just reset (section 4, lost second factor) has none to pass and enrols a new one right after, as at the next login today.
      A handler who lost factor and password and has no colleague to reset the factor proves the recovery key instead (section 4, recovery proof), then enrols a new factor after step 4.
@@ -100,7 +100,7 @@ grant(handler) = 0x01 || crypto_box_seal(tenantSk, handlerPk)
 ```
 - **Unlock:** password → `kek` → open `wrappedHandlerSk` → `handlerSk` → `crypto_box_seal_open(grant)` → `tenantSk`.
 - **Grant / re-grant:** an unlocked handler fetches the new handler's `handlerPk` and uploads `0x01 || crypto_box_seal(tenantSk, newHandlerPk)`. This covers adding a handler and restoring one who forgot their password (the forgotten handler gets a new key pair first). The grant is only uploaded after the fingerprint check below.
-- **Remove:** delete that handler's membership with its grant and end every session of the account, in one request. Decided 2026-11-10 (**proposed** until review): until rotation is built (below, after launch), removal does only this. The removing handler's app says that the removed person keeps what they have already seen, and the customer docs say so too.
+- **Remove:** delete that handler's membership with its grant and end every session of the account, in one request. Decided 2026-11-10: until rotation is built (below, after launch), removal does only this. The removing handler's app says that the removed person keeps what they have already seen, and the customer docs say so too.
   - Any member with a grant may remove another member; nobody can remove themself, so at least one member with a grant always stays. With roles this moves to Firmen-Admin.
   - A removed handler keeps their account and their other tenants. Their key pair stays: it never held more than grants, and the grant for this tenant is gone.
 
@@ -129,7 +129,7 @@ grant(recovery) = 0x01 || crypto_box_seal(tenantSk, recoveryPk)
 - Shown once, confirmed by re-typing the last group, then offered as print / .txt. The server stores `recoveryPk` and the grant, never the key.
 - Using it: enter the recovery key → `tenantSk` → grant to a (new) handler key pair → done.
 
-**Restore with the recovery key.** Decided 2026-11-10 (**proposed** until review). A signed-in handler without a grant in a tenant (after a password reset, section 3) grants themself from the recovery key:
+**Restore with the recovery key.** Decided 2026-11-10. A signed-in handler without a grant in a tenant (after a password reset, section 3) grants themself from the recovery key:
 ```
 client:  recoveryKeyPair  = derived from the typed key (above)
          proof            = recovery proof (below), one fresh challenge
@@ -144,7 +144,7 @@ server:  checks proof as below, then stores grant(self) only onto the handler's 
 - Audited as `recovery.used` and `member.granted` with the handler as actor and target. The app then offers a new recovery key, since the old one was typed into a browser; replacing it is not required.
 
 **Recovery proof.** Decided 2026-11-01. A handler who lost their second factor proves they hold the recovery key.
-- No colleague gate (changed 2026-11-10, **proposed** until review). The proof used to be offered only when no other member with a grant shared a tenant with the handler. A colleague who has left but was never removed then blocked the recovery key while being unable to help. The recovery key gives full access to `tenantSk` anyway, so asking a colleague first adds no protection. The app still suggests the colleague first and offers the key as the other way. The key never leaves the browser, and the recovery key pair has no signing key, so the proof is opening something sealed to `recoveryPk`:
+- No colleague gate (changed 2026-11-10). The proof used to be offered only when no other member with a grant shared a tenant with the handler. A colleague who has left but was never removed then blocked the recovery key while being unable to help. The recovery key gives full access to `tenantSk` anyway, so asking a colleague first adds no protection. The app still suggests the colleague first and offers the key as the other way. The key never leaves the browser, and the recovery key pair has no signing key, so the proof is opening something sealed to `recoveryPk`:
 ```
 server:  challenge = randombytes_buf(32)
          sealed    = 0x01 || crypto_box_seal(challenge, recoveryPk)     // sent to the client
